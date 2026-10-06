@@ -1,0 +1,66 @@
+# ADDED: default configuration for the full Run 0 / Run A / Run B experiment.
+# The exponent x is NOT configured here; it is declared once as NOISE_EXPONENT_X at the
+# top of scripts/finetune.py, as the assignment brief requires.
+
+[experiment]
+name = "sr3_afhq_noise_schedule_ablation"
+device = "auto"                     # "auto", "cuda", "cuda:0" or "cpu"
+
+[paths]                             # relative paths are resolved against the repo root
+data_root = "data"
+output_root = "outputs"
+checkpoint_dir = "checkpoints"
+
+[data]
+afhq_url = "https://www.dropbox.com/s/t9l9o3vsx2jai3z/afhq.zip?dl=1"
+split_seed = 42
+val_size = 500                      # carved out of AFHQ train/, stratified by class
+test_per_class = 100                # drawn from AFHQ val/ (the official test split)
+low_resolution = 16
+high_resolution = 128
+train_limit = 0                     # 0 = use every training image
+num_workers = 4
+
+[schedule]                          # identical to the pretrained checkpoint's schedule
+schedule = "linear"
+n_timestep = 2000
+linear_start = 1e-6
+linear_end = 1e-2
+
+[model]
+pretrained_folder_url = "https://drive.google.com/drive/folders/12jh0K8XoM1FqpeByXvugHHAF3oAZ8KRu"
+pretrained_file = "I640000_E37_gen.pth"
+image_size = 128
+channels = 3
+
+[model.unet]                        # must match config/sr_sr3_16_128.json upstream
+in_channel = 6
+out_channel = 3
+inner_channel = 64
+norm_groups = 32
+channel_multiplier = [1, 2, 4, 8, 8]
+attn_res = [16]
+res_blocks = 2
+dropout = 0.2
+
+[train]
+seed = 42
+batch_size = 8
+grad_accum_steps = 1
+learning_rate = 1e-5
+epochs = 10
+checkpoint_epochs = [2, 4, 6, 8, 10]
+max_iterations = 0                  # 0 = no cap; the smoke test caps this
+log_every = 100
+
+[sampling]
+seed = 1234
+batch_size = 8
+snapshot_samples = 3                # fixed validation images saved at each checkpoint epoch
+validation_images = 24              # images used for the validation PSNR at checkpoints
+trajectory_samples = 3
+trajectory_timesteps = [1600, 1200, 800, 400, 0]
+
+[evaluation]
+metrics = ["psnr", "ssim"]          # add "lpips" after: pip install -e .[lpips]
+test_limit = 0                      # 0 = all 300 test images

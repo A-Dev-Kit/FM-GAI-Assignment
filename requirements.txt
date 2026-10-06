@@ -1,0 +1,16 @@
+# ADDED: runtime requirements for the SR3 noise-schedule ablation.
+#
+# 1. Install PyTorch for your CUDA version first, for example:
+#      RTX 50xx (Blackwell, Python 3.14):  pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+#      Kaggle / Colab: torch is preinstalled, skip this step.
+# 2. Then install this project:  pip install -e .[dev]
+#    or only the pinned runtime packages below:  pip install -r requirements.txt
+numpy>=1.26
+pillow>=10.0
+tqdm>=4.66
+matplotlib>=3.8
+gdown>=5.2
+markdown>=3.5
+# Optional extras
+# lpips>=0.1.4     # LPIPS metric (python -m pip install -e .[lpips])
+# pymupdf>=1.24    # page numbers on the report PDF

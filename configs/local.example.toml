@@ -1,0 +1,14 @@
+# ADDED: template for machine-specific overrides.
+# Copy to configs/local.toml (git-ignored); it is merged automatically after all other
+# config files. Typical use: keep the ~3 GB of data and checkpoints outside a cloud-synced
+# folder such as OneDrive.
+
+[paths]
+data_root = "C:/Users/<you>/sr3_ablation_cache/data"
+checkpoint_dir = "C:/Users/<you>/sr3_ablation_cache/checkpoints"
+
+# [experiment]
+# device = "cuda:0"
+
+# [data]
+# num_workers = 2          # lower this on Windows laptops if data loading is slow to start

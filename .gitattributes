@@ -1,0 +1,7 @@
+# ADDED: normalise line endings; vendored upstream files are kept byte-identical.
+* text=auto eol=lf
+third_party/** -text
+*.png binary
+*.jpg binary
+*.pth binary
+*.pdf binary

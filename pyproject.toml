@@ -1,0 +1,66 @@
+# ADDED: project metadata and tool configuration for the SR3 noise-schedule ablation.
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sr3-ablation"
+version = "1.0.0"
+description = "Noise-schedule ablation (theta_t -> theta_t ** x) for SR3 16->128 super-resolution on AFHQ."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Rikin" },
+    { name = "Sonalika Sharma" },
+    { name = "Anshul" },
+    { name = "Bala" },
+]
+# torch / torchvision are installed separately because the right wheel depends on the CUDA
+# version of the machine (see README, "Environment").
+dependencies = [
+    "numpy>=1.26",
+    "pillow>=10.0",
+    "tqdm>=4.66",
+    "matplotlib>=3.8",
+    "gdown>=5.2",
+    "markdown>=3.5",
+]
+
+[project.optional-dependencies]
+lpips = ["lpips>=0.1.4"]
+pdf = ["pymupdf>=1.24"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+sr3-ablation = "sr3_ablation.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts", "report"]
+extend-exclude = ["third_party"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "UP", "SIM", "C4", "RUF", "PTH"]
+# RUF001-003: the docs use typographic characters (×, →, θ) on purpose.
+# N812: `import torch.nn.functional as F` is the standard PyTorch idiom.
+ignore = ["RUF001", "RUF002", "RUF003", "N812"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sr3_ablation"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+# Markdown code blocks quote upstream code verbatim.
+exclude = ["*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: end-to-end runs of the pipeline on a tiny CPU model"]

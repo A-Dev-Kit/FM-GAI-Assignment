@@ -1,0 +1,22 @@
+# ADDED: overrides for the local smoke test. Use on top of base.toml:
+#   python -m sr3_ablation smoke-test --config configs/base.toml --config configs/smoke.toml
+
+[experiment]
+name = "sr3_afhq_smoke_test"
+
+[paths]
+output_root = "outputs/smoke"
+
+[train]
+epochs = 1
+checkpoint_epochs = [1]
+max_iterations = 200
+log_every = 20
+
+[sampling]
+snapshot_samples = 1
+validation_images = 4
+trajectory_samples = 1
+
+[evaluation]
+test_limit = 8
