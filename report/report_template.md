@@ -10,25 +10,25 @@
 
 ## 1. Task and Model
 
-**Task: 8× super-resolution of animal faces.** A 16×16 RGB image is mapped to a 128×128 RGB image. The 16×16 input is a bicubic downsample of the 128×128 ground truth; as SR3 requires, it is bicubically upsampled back to 128×128 and used as the conditioning image.
+Our task is 8× super-resolution of animal faces: a 16×16 RGB image goes in and a 128×128 RGB image comes out. We build the 16×16 input by bicubically downsampling the 128×128 ground truth, then upsample it back to 128×128 and use that as the conditioning image, which is the format SR3 expects.
 
-**Model: SR3** (Saharia et al., *Image Super-Resolution via Iterative Refinement*, IEEE TPAMI 2022, [arXiv:2104.07636](https://arxiv.org/abs/2104.07636)), using the unofficial PyTorch implementation by Janspiry pinned to commit [`01d27a7`](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/tree/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d) and its released checkpoint `I640000_E37_gen.pth` (16→128, trained on FFHQ). SR3 is a conditional DDPM in pixel space: at every step the UNet receives the conditioning image concatenated with $x_t$ and the continuous noise level $\sqrt{\bar\alpha}$, and predicts the noise $\epsilon$.
+The model is SR3 (Saharia et al., *Image Super-Resolution via Iterative Refinement*, IEEE TPAMI 2022, [arXiv:2104.07636](https://arxiv.org/abs/2104.07636)). We work from the unofficial PyTorch implementation by Janspiry, pinned to commit [`01d27a7`](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/tree/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d), and its released checkpoint `I640000_E37_gen.pth` for 16→128, trained on FFHQ. SR3 is a conditional DDPM in pixel space. At every step its UNet receives the conditioning image concatenated with $x_t$, together with the continuous noise level $\sqrt{\bar\alpha}$, and predicts the noise $\epsilon$.
 
 ## 2. Dataset and Verification
 
-**AFHQ v1** (Choi et al., *StarGAN v2*, CVPR 2020; CC BY-NC 4.0): 15,000 animal faces at 512×512 in three classes (cat, dog, wild). Our split uses seed 42; the validation images come from AFHQ `train/`, stratified by class, and the test images are 100 per class from AFHQ's official `val/` split:
+We use AFHQ v1 (Choi et al., *StarGAN v2*, CVPR 2020; CC BY-NC 4.0), which holds 15,000 animal faces at 512×512 in three classes: cat, dog and wild. Our split uses seed 42. The validation images are drawn from AFHQ `train/`, stratified by class, and the test images are 100 per class taken from AFHQ's official `val/` split:
 
 {{DATASET_TABLE}}
 
-Each image is resized (bicubic, centre crop) to 128×128 (target) and 16×16 (input), and the input is upsampled back to 128×128, following upstream `data/prepare_data.py`. The full manifest is in `outputs/dataset/manifest.csv`.
+Each image is resized by bicubic interpolation with a centre crop, to 128×128 for the target and 16×16 for the input, and the input is then upsampled back to 128×128. This follows upstream `data/prepare_data.py`. The full manifest is in `outputs/dataset/manifest.csv`.
 
-**Evidence that AFHQ was not used for pretraining (route (a), stated pretraining data):**
+To show that AFHQ was not used for pretraining we take route (a), the stated pretraining data, which three independent sources agree on:
 
-- Training config [`config/sr_sr3_16_128.json` lines 17–19](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/config/sr_sr3_16_128.json#L17-L19): training set `"name": "FFHQ"`, `"dataroot": "dataset/ffhq_16_128"`; line 29: validation set `"CelebaHQ"`.
-- [README line 24](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/README.md?plain=1#L24): the checkpoint is "16×16 → 128×128 on FFHQ-CelebaHQ".
-- Paper, [arXiv:2104.07636v2](https://arxiv.org/pdf/2104.07636v2), page 5, right column, lines 11–13: "training face super-resolution models on Flickr-Faces-HQ (FFHQ) and evaluating on CelebA-HQ".
+- The training config, [`config/sr_sr3_16_128.json` lines 17–19](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/config/sr_sr3_16_128.json#L17-L19), gives the training set as `"name": "FFHQ"` with `"dataroot": "dataset/ffhq_16_128"`, and line 29 names the validation set `"CelebaHQ"`.
+- [README line 24](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/README.md?plain=1#L24) describes the checkpoint as "16×16 → 128×128 on FFHQ-CelebaHQ".
+- The paper, [arXiv:2104.07636v2](https://arxiv.org/pdf/2104.07636v2), page 5, right column, lines 11–13, reports "training face super-resolution models on Flickr-Faces-HQ (FFHQ) and evaluating on CelebA-HQ".
 
-FFHQ and CelebA-HQ contain only human faces, so AFHQ's animal faces (fur, eye and ear geometry, colour statistics) are out of the pretraining distribution.
+Since FFHQ and CelebA-HQ contain only human faces, AFHQ's animal faces sit outside the pretraining distribution, differing in fur, in eye and ear geometry, and in colour statistics.
 
 ## 3. Schedule Analysis
 
@@ -36,48 +36,49 @@ SR3's native noise parameter is $\theta_t = \beta_t$, the per-step variance of t
 
 $$q(x_t \mid x_{t-1}) = \mathcal{N}\big(\sqrt{1-\beta_t}\,x_{t-1},\,\beta_t I\big), \qquad \bar\alpha_t = \prod_{s=1}^{t}(1-\beta_s), \qquad \mathrm{SNR}(t) = \frac{\bar\alpha_t}{1-\bar\alpha_t},$$
 
-with a linear schedule from $\beta_1 = 10^{-6}$ to $\beta_T = 10^{-2}$ and $T = 2000$. Every $\beta_t$ lies in $(0, 1)$, so no rescaling is needed. Run B uses $\theta'_t = \beta_t^{x}$ with $x = {{EXPONENT}}$.
+with a linear schedule from $\beta_1 = 10^{-6}$ to $\beta_T = 10^{-2}$ and $T = 2000$. Every $\beta_t$ lies in $(0, 1)$, so no rescaling is needed before the power transform. Run B uses $\theta'_t = \beta_t^{x}$ with $x = {{EXPONENT}}$.
 
-**Direction of the change.** Because $0 < \beta_t < 1$ and $x > 1$, $\beta_t^{x} < \beta_t$ for every $t$. Each factor $1 - \beta_t^{x}$ is larger, so $\bar\alpha'_t > \bar\alpha_t$ and $\mathrm{SNR}'(t) > \mathrm{SNR}(t)$ at **every** timestep: the modified forward process destroys much less signal.
+The direction of the change is easy to pin down. Because $0 < \beta_t < 1$ and $x > 1$, we have $\beta_t^{x} < \beta_t$ at every step, which makes each factor $1 - \beta_t^{x}$ larger. It follows that $\bar\alpha'_t > \bar\alpha_t$ and $\mathrm{SNR}'(t) > \mathrm{SNR}(t)$ at **every** timestep: the modified forward process destroys far less signal.
 
 {{SCHEDULE_TABLE}}
 
-**Consequence at $t = T$.** Under $\theta_t$, $\bar\alpha_T \approx 4\times10^{-5}$ and $x_T$ is essentially pure noise, matching the $\mathcal{N}(0, I)$ start of sampling. Under $\theta_t^{x}$, $\bar\alpha'_T \approx 0.62$: $x_T = 0.78\,x_0 + 0.62\,\epsilon$ still carries most of the image, and the SNR never falls below 1. Sampling, however, still starts from pure noise, so Run B begins from a state the fine-tuned model never sees in training, and its noise-level input $\sqrt{\bar\alpha'_t}$ only covers $[0.78, 1]$ instead of $[0.007, 1]$.
+What happens at $t = T$ is the interesting part. Under $\theta_t$ we get $\bar\alpha_T \approx 4\times10^{-5}$, so $x_T$ is essentially pure noise and matches the $\mathcal{N}(0, I)$ start of sampling. Under $\theta_t^{x}$, however, $\bar\alpha'_T \approx 0.62$, meaning $x_T = 0.78\,x_0 + 0.62\,\epsilon$ still carries most of the image and the SNR never falls below 1. Sampling nonetheless starts from pure noise. Run B therefore begins from a state its fine-tuned model has never seen in training, and the noise-level input $\sqrt{\bar\alpha'_t}$ it was trained on only spans $[0.78, 1]$ rather than $[0.007, 1]$.
 
-**SNR at the saved trajectory timesteps:**
+The SNR values at the trajectory timesteps we save are:
 
 {{TRAJECTORY_SNR_TABLE}}
 
 {{SCHEDULE_FIGURE}}
 
-**Predictions to test.** (i) Run B's training loss is lower than Run A's, because noise is easier to predict at high SNR. (ii) Run B's reverse process cannot remove the initial noise: each step's variance $\beta_t^{x}$ is tiny, so we expect visible residual noise or colour shifts in its outputs and lower PSNR/SSIM than Run A. (iii) Run B's early trajectory states change little, while Run A moves from noise to structure around $t \approx 500$, where its SNR crosses 1.
+This leaves us with three predictions to test against the results. First, Run B's training loss should fall below Run A's, simply because noise is easier to predict at high SNR. Second, Run B's reverse process should be unable to clear the initial noise, since each step's variance $\beta_t^{x}$ is tiny, so we expect visible residual noise or colour shifts and worse PSNR and SSIM than Run A. Third, Run B's early trajectory states should barely change, whereas Run A should move from noise to structure around $t \approx 500$, where its SNR crosses 1.
 
 ## 4. Experimental Setup
 
 {{SETUP_TABLE}}
 
-Runs A and B start from the same checkpoint, use the same data order and seeds, and differ **only** in the noise schedule (training and sampling). Run 0 applies the pretrained checkpoint unchanged with the original schedule. Test outputs use the same sampling seed per batch for every run, so all runs start from identical initial noise for each image.
+Runs A and B start from the same checkpoint and use the same data order and seeds; the noise schedule, in both training and sampling, is their only difference. Run 0 applies the pretrained checkpoint unchanged with the original schedule. Because test outputs reuse the same sampling seed per batch for every run, all three runs start each image from identical initial noise.
 
-**Environment:** {{ENVIRONMENT}}
+Environment: {{ENVIRONMENT}}
 
 ## 5. Implementation
 
-The upstream code is vendored in `third_party/sr3/`; the **only** change is one line in `model/sr3_modules/diffusion.py` (`set_new_noise_schedule`), marked `# ADDED`:
+We vendored the upstream code in `third_party/sr3/`. The **only** change to it is a single line in `model/sr3_modules/diffusion.py`, inside `set_new_noise_schedule`, marked `# ADDED`:
 
 ```python
-betas = betas ** schedule_opt.get(
-    "exponent", 1.0
-)  # ADDED: noise-schedule ablation, theta_t -> theta_t ** x
+betas = betas ** schedule_opt.get('exponent', 1.0)  # ADDED: noise-schedule ablation, theta_t -> theta_t ** x
 ```
 
-All buffers derived from `betas` (including `sqrt_alphas_cumprod_prev`, which drives the continuous noise level in training and sampling) therefore use the modified schedule. Everything else is new code in `src/sr3_ablation/` (each file starts with an `# ADDED` header). The exponent is declared once as `NOISE_EXPONENT_X = {{EXPONENT}}` at the top of `scripts/finetune.py`.
+Every buffer derived from `betas` is computed after this line, including `sqrt_alphas_cumprod_prev`, which drives the continuous noise level in both training and sampling, so all of them pick up the modified schedule. Everything else is new code in `src/sr3_ablation/`, where each file opens with an `# ADDED` header. The exponent is declared once, as `NOISE_EXPONENT_X = {{EXPONENT}}` at the top of `scripts/finetune.py`.
 
-- **Weights only.** We load only the UNet weights (`denoise_fn.*`) from the checkpoint and install the schedule *afterwards*. Upstream `load_network` would also restore the optimiser, step counters and the schedule buffers stored in the checkpoint, which would silently undo the ablation.
-- **Independent verification.** `NoiseSchedule` recomputes $\theta_t^{x}$, $\bar\alpha_t$ and SNR in float64, independently of SR3, and compares them with the buffers read back from the model before and after fine-tuning and again before sampling (`schedule.json`, `schedule_sampling.json`):
+Three implementation details matter for the validity of the ablation.
+
+We load weights only. Just the UNet weights (`denoise_fn.*`) come from the checkpoint, and the schedule is installed *afterwards*. Upstream `load_network` would also restore the optimiser, the step counters and the schedule buffers stored inside the checkpoint, which would silently undo the ablation.
+
+We verify the schedule independently. `NoiseSchedule` recomputes $\theta_t^{x}$, $\bar\alpha_t$ and SNR in float64 without going through SR3, and compares the result against the buffers read back from the model before and after fine-tuning, and once more before sampling (`schedule.json`, `schedule_sampling.json`):
 
 {{SCHEDULE_EVIDENCE}}
 
-- **Sampling.** A batched reverse sampler calls upstream `p_sample` for $t = T, \dots, 1$ and notifies observers of each state $x_t$; the trajectory recorder keeps the requested timesteps.
+Sampling runs in batches. A reverse sampler calls upstream `p_sample` for $t = T, \dots, 1$ and notifies observers of each state $x_t$, and the trajectory recorder keeps the timesteps we asked for.
 
 ## 6. Results
 
