@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sr3-ablation"
 version = "1.0.0"
-description = "Noise-schedule ablation (theta_t -> theta_t ** x) for SR3 16->128 super-resolution on AFHQ."
+description = "Noise-schedule ablation (theta_t -> theta_t ** x) for SR3 16->128 super-resolution on Kvasir-SEG."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }

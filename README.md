@@ -1,18 +1,18 @@
-# SR3 Noise-Schedule Ablation on AFHQ
+# SR3 Noise-Schedule Ablation on Kvasir-SEG
 
 <!-- ADDED: project README. -->
 
-CSL7860 Foundation Models and Generative AI, IIT Jodhpur (Dr. Angshuman Paul). Group: Rikin,
-Sonalika Sharma, Anshul, Bala.
+CSL7860 Foundation Models and Generative AI, IIT Jodhpur (Dr. Angshuman Paul). Group: Rikin Patel
+(M26AI1096), Balasubramanian M (M26AI1030), Sonalika Sharma (M26AI1120), Anshul (M26AI1020).
 
 We fine-tune the pretrained **SR3** 16×16 → 128×128 super-resolution diffusion model on
-**AFHQ** animal faces twice, changing only the noise schedule:
+**Kvasir-SEG** colonoscopy frames twice, changing only the noise schedule:
 
 | Run | Weights | Noise schedule (training and sampling) |
 |---|---|---|
 | Run 0 | pretrained `I640000_E37_gen.pth`, no fine-tuning | $\theta_t = \beta_t$ (original) |
-| Run A | fine-tuned on AFHQ | $\theta_t = \beta_t$ (original) |
-| Run B | fine-tuned on AFHQ | $\theta_t^{x}$ with **$x = 1.60$** |
+| Run A | fine-tuned on Kvasir-SEG | $\theta_t = \beta_t$ (original) |
+| Run B | fine-tuned on Kvasir-SEG | $\theta_t^{x}$ with **$x = 1.60$** |
 
 $\beta_t$ is linear from $10^{-6}$ to $10^{-2}$ over $T = 2000$ steps. The exponent is declared once,
 as `NOISE_EXPONENT_X = 1.60` at the top of [`scripts/finetune.py`](scripts/finetune.py).
@@ -26,7 +26,7 @@ Solutions/
 ├── src/sr3_ablation/   all new code (every file starts with an "# ADDED" header)
 │   ├── config/         TOML -> frozen dataclasses, validation, layered merging
 │   ├── schedule/       transform strategies (identity, power), NoiseSchedule, verification
-│   ├── data/           AFHQ download, seeded manifest split, SR3 16/128 layout, DataLoader
+│   ├── data/           Kvasir-SEG download, duplicate removal, seeded split, SR3 16/128 layout
 │   ├── model/          interfaces, Sr3Backend adapter (only importer of third_party), checkpoints
 │   ├── training/       FineTuner loop + callbacks (loss CSV, snapshots, checkpoints, evidence)
 │   ├── sampling/       batched reverse sampler with observers, trajectory recorder
@@ -78,7 +78,8 @@ python -m venv .venv
 
 On Kaggle or Colab torch is preinstalled: `pip install -e . gdown` is enough (see the notebook).
 
-**Large files.** Data (about 3 GB once processed) and the 391 MB checkpoint default to
+**Large files.** Data (the 44 MB zip, about 90 MB once extracted and processed) and the 391 MB
+checkpoint default to
 `data/` and `checkpoints/` inside the repo. If the repo lives in a cloud-synced folder (OneDrive,
 Dropbox), copy `configs/local.example.toml` to `configs/local.toml` and point those paths
 elsewhere; `local.toml` is git-ignored and merged automatically. The same applies to the virtual
@@ -91,7 +92,7 @@ default `configs/base.toml`).
 
 ```bash
 python -m sr3_ablation download-checkpoint     # I640000_E37_gen.pth from the authors' Google Drive
-python -m sr3_ablation prepare-data            # downloads AFHQ (730 MB), seeded split, 16/128 layout
+python -m sr3_ablation prepare-data            # downloads Kvasir-SEG (44 MB), dedupe, seeded split, 16/128 layout
 python -m sr3_ablation verify-schedule --run B # quick check: model buffers == theta_t ** 1.60
 
 python -m sr3_ablation run0                    # Run 0: pretrained model on the test split (+ bicubic)
@@ -109,23 +110,26 @@ iterations, 8 test images) and writes timing estimates to `outputs/smoke/timings
 
 ### Reproducibility
 
-- **Data split** (seed 42, `outputs/dataset/manifest.csv`): 14,130 train images and 500
-  validation images (stratified by class) from AFHQ `train/`, and 300 test images (100 per class)
-  from AFHQ's official `val/` split.
+- **Data split** (seed 42, `outputs/dataset/manifest.csv`): all 1,000 Kvasir-SEG frames are
+  hashed first and exact duplicates dropped (there are none), then shuffled with the seed into
+  800 train, 100 validation and 100 test images. `split_summary.json` records the counts and any
+  removed files.
 - **Seeds:** training 42, sampling 1234. Test batch *k* uses seed 1234 + *k*, so Runs 0, A and B
   start from identical noise for each test image. Validation, snapshot and trajectory images are
-  fixed and spread evenly over the three classes.
+  fixed and spread evenly over the sorted image ids.
+- **Overlay box:** many frames have a black box from the endoscope display in the lower-left
+  corner. It is kept as is; every run sees the same processed images.
 - **Recorded per run:** `resolved_config.json`, `environment.json` (versions, GPU, git commit),
   `run.json` (run identity, exponent and per-epoch results) and `log.txt`.
-- Runs A and B share every hyperparameter: Adam with learning rate 1e-5, batch 8, 10 epochs,
-  L1 noise loss and horizontal-flip augmentation.
+- Runs A and B share every hyperparameter: Adam with learning rate 1e-5, batch 8, 60 epochs
+  (100 iterations each), L1 noise loss and horizontal-flip augmentation.
 
 ### What each run produces (`outputs/<run>/`)
 
 | File | Content | Brief item |
 |---|---|---|
 | `loss.csv` | columns `epoch,train_loss` | per-epoch training loss |
-| `samples/runB_epoch04_sample1.png` … | 3 fixed validation images at epochs 2, 4, 6, 8, 10 | samples at 5 equally spaced epochs |
+| `samples/runB_epoch24_sample1.png` … | 3 fixed validation images at epochs 12, 24, 36, 48, 60 | samples at 5 equally spaced epochs |
 | `trajectories/runA_t1600_sample1.png` … | $x_t$ at $t$ = 1600, 1200, 800, 400, 0 for 3 test images | reverse-process trajectory |
 | `trajectories/trajectory.json` | image ids, $\bar\alpha_t$ and SNR for each saved $t$ | trajectory labels |
 | `validation.csv` | validation PSNR / SSIM at checkpoint epochs | model selection evidence |
@@ -139,25 +143,26 @@ reverse step with upstream index $i$ produces $x_i$, and $x_0$ is the final imag
 ## Measured on the RTX 5070 (smoke test)
 
 Measured with `python -m sr3_ablation smoke-test` on an RTX 5070 Laptop GPU (8 GB), Python 3.14.5,
-PyTorch 2.14.1+cu130, on 6 October 2026. The raw numbers are in `outputs/smoke/timings.json`.
+PyTorch 2.14.1+cu130, on 10 October 2026 with the real Kvasir-SEG split. The raw numbers are in
+`outputs/smoke/timings.json`.
 
 | Quantity | Value |
 | --- | --- |
 | Training batch size 8 fits in memory | yes, no gradient accumulation needed |
-| Training speed | 0.374 s per iteration (200 iterations in 75 s) |
-| Peak GPU memory while training | 5.1 GB |
-| Full 2000-step reverse sampling, one batch of 8 images | 215 to 241 s |
-| One trajectory sample (2000 steps, 5 saved states) | 51 s |
+| Training speed | 0.450 s per iteration (one 100-iteration epoch in 45 s) |
+| Peak GPU memory while training | 5.0 GB |
+| Full 2000-step reverse sampling, one batch of 8 images | 185 to 193 s |
+| One trajectory sample (2000 steps, 5 saved states) | 39 s |
 
 These give the following estimates for the full configuration in `configs/base.toml`
-(14,130 training images, 1,767 iterations per epoch, 10 epochs, 300 test images):
+(800 training images, 100 iterations per epoch, 60 epochs, 100 test images):
 
 | Stage | Estimated GPU hours |
 | --- | --- |
-| Fine-tuning, per run | 1.8 |
-| Validation sampling at the 5 checkpoint epochs, per run | 1.0 |
-| Test-set evaluation, per run | 2.6 |
-| Total for Run 0, Run A and Run B | about 13.3 |
+| Fine-tuning, per run | 0.75 |
+| Validation sampling at the 5 checkpoint epochs, per run | 0.8 |
+| Test-set evaluation, per run | 0.7 |
+| Total for Run 0, Run A and Run B | about 5.2 |
 
 Sampling dominates the cost. Runs A and B are independent, so two teammates can run them at the
 same time on separate GPUs (local or Kaggle), which roughly halves the wall-clock time.
@@ -169,7 +174,7 @@ python -m pytest            # unit tests + tiny-UNet end-to-end pipeline on the 
 ruff format --check . && ruff check .
 ```
 
-The integration test prepares a synthetic AFHQ tree, fine-tunes Runs A and B, evaluates Runs
+The integration test prepares a synthetic Kvasir-SEG tree (with one duplicate frame to remove), fine-tunes Runs A and B, evaluates Runs
 0, A and B, records trajectories and builds the report with a 10-step tiny SR3 UNet. Unit tests
 cover the schedule numbers declared in Phase 1 ($\bar\alpha'_T = 0.6153$, $\mathrm{SNR}'_T = 1.60$,
 original SNR first below 1 at $t = 527$). They also check that the vendored line applies the power,
@@ -192,5 +197,6 @@ and that loading an upstream-style checkpoint never restores its stored schedule
 ## Licences
 
 - Upstream SR3 code: Apache-2.0 (`third_party/sr3/LICENSE`).
-- AFHQ: CC BY-NC 4.0 (Choi et al., *StarGAN v2*, CVPR 2020), used for non-commercial coursework.
+- Kvasir-SEG (Jha et al., MMM 2020): research and education use only. The images are downloaded
+  by `prepare-data` and are never committed or redistributed with this code.
 - Pretrained weights: released by the SR3 implementation's author.

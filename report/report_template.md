@@ -2,33 +2,35 @@
      outputs/ and writes report/build/report.{md,html,pdf}. Text marked [TEAM: ...] must be
      written by the team after the full runs; delete the markers before submitting. -->
 
-# Noise Schedule Ablation in SR3: $\theta_t$ vs $\theta_t^{x}$ on AFHQ
+# Noise Schedule Ablation in SR3: $\theta_t$ vs $\theta_t^{x}$ on Kvasir-SEG
 
 **CSL7860 Foundation Models and Generative AI · IIT Jodhpur · Instructor: Dr. Angshuman Paul**
 
-**Group:** Rikin [full name, roll no.] · Sonalika Sharma (M26AI1120) · Anshul (M26AI1020) · Bala [full name, roll no.]
+**Group:** Rikin Patel (M26AI1096) · Balasubramanian M (M26AI1030) · Sonalika Sharma (M26AI1120) · Anshul (M26AI1020)
 
 ## 1. Task and Model
 
-Our task is 8× super-resolution of animal faces: a 16×16 RGB image goes in and a 128×128 RGB image comes out. We build the 16×16 input by bicubically downsampling the 128×128 ground truth, then upsample it back to 128×128 and use that as the conditioning image, which is the format SR3 expects.
+Our task is 8× super-resolution of colonoscopy images. The model gets a 16×16 RGB crop of a colonoscopy frame showing a polyp and has to produce the 128×128 version. We make the 16×16 input by bicubically downsampling the 128×128 ground truth, and then upsample it back to 128×128 to use as the conditioning image, which is the format SR3 expects. We chose this task because the things a doctor looks at in these frames, the texture of the mucosa and the edge of the polyp, are the first details to disappear at low resolution.
 
 The model is SR3 (Saharia et al., *Image Super-Resolution via Iterative Refinement*, IEEE TPAMI 2022, [arXiv:2104.07636](https://arxiv.org/abs/2104.07636)). We work from the unofficial PyTorch implementation by Janspiry, pinned to commit [`01d27a7`](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/tree/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d), and its released checkpoint `I640000_E37_gen.pth` for 16→128, trained on FFHQ. SR3 is a conditional DDPM in pixel space. At every step its UNet receives the conditioning image concatenated with $x_t$, together with the continuous noise level $\sqrt{\bar\alpha}$, and predicts the noise $\epsilon$.
 
 ## 2. Dataset and Verification
 
-We use AFHQ v1 (Choi et al., *StarGAN v2*, CVPR 2020; CC BY-NC 4.0), which holds 15,000 animal faces at 512×512 in three classes: cat, dog and wild. Our split uses seed 42. The validation images are drawn from AFHQ `train/`, stratified by class, and the test images are 100 per class taken from AFHQ's official `val/` split:
+We use Kvasir-SEG (Jha et al., *Kvasir-SEG: A Segmented Polyp Dataset*, MMM 2020), downloaded from [datasets.simula.no/kvasir-seg](https://datasets.simula.no/kvasir-seg/). It has 1,000 colonoscopy frames, each with at least one polyp, stored as RGB JPEGs whose sizes range from 332×487 to 1920×1072. The dataset also ships polyp masks, which we do not need. Its licence allows research and education use, so the images are not included in our code submission.
+
+For cleaning, every file is hashed with SHA-1 before the split and exact copies are dropped, so that the same picture cannot end up in both training and test. Kvasir-SEG has no official split and no classes, so we shuffle the remaining frames with seed 42 and take 100 for test, 100 for validation and the rest for training:
 
 {{DATASET_TABLE}}
 
-Each image is resized by bicubic interpolation with a centre crop, to 128×128 for the target and 16×16 for the input, and the input is then upsampled back to 128×128. This follows upstream `data/prepare_data.py`. The full manifest is in `outputs/dataset/manifest.csv`.
+Each frame is resized by bicubic interpolation with a centre crop, to 128×128 for the target and 16×16 for the input, and the input is then upsampled back to 128×128. This follows upstream `data/prepare_data.py`. Many frames carry a small black box in the lower-left corner, which comes from the endoscope's display and not from the tissue. We left it in, because cropping or masking it would mean guessing where it is in each frame, and since all three runs see exactly the same processed images it does not favour any of them. The full manifest is in `outputs/dataset/manifest.csv`.
 
-To show that AFHQ was not used for pretraining we take route (a), the stated pretraining data, which three independent sources agree on:
+To show that Kvasir-SEG was not used for pretraining we take route (a), the stated pretraining data, which three independent sources agree on:
 
 - The training config, [`config/sr_sr3_16_128.json` lines 17–19](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/config/sr_sr3_16_128.json#L17-L19), gives the training set as `"name": "FFHQ"` with `"dataroot": "dataset/ffhq_16_128"`, and line 29 names the validation set `"CelebaHQ"`.
 - [README line 24](https://github.com/Janspiry/Image-Super-Resolution-via-Iterative-Refinement/blob/01d27a7cbfa8502be1d8dbd4ee02fcbd5e44389d/README.md?plain=1#L24) describes the checkpoint as "16×16 → 128×128 on FFHQ-CelebaHQ".
 - The paper, [arXiv:2104.07636v2](https://arxiv.org/pdf/2104.07636v2), page 5, right column, lines 11–13, reports "training face super-resolution models on Flickr-Faces-HQ (FFHQ) and evaluating on CelebA-HQ".
 
-Since FFHQ and CelebA-HQ contain only human faces, AFHQ's animal faces sit outside the pretraining distribution, differing in fur, in eye and ear geometry, and in colour statistics.
+None of the three mentions Kvasir-SEG. The domains are also very far apart. FFHQ and CelebA-HQ are aligned photos of human faces in ordinary light, while Kvasir-SEG frames are wide-angle views from inside the colon, lit only by the scope's lamp, with pink and red mucosa, bright specular reflections, vessels and mucus, and nothing resembling a face.
 
 ## 3. Schedule Analysis
 
@@ -56,7 +58,7 @@ This leaves us with three predictions to test against the results. First, Run B'
 
 {{SETUP_TABLE}}
 
-Runs A and B start from the same checkpoint and use the same data order and seeds; the noise schedule, in both training and sampling, is their only difference. Run 0 applies the pretrained checkpoint unchanged with the original schedule. Because test outputs reuse the same sampling seed per batch for every run, all three runs start each image from identical initial noise.
+The data come from the Kvasir-SEG zip and go through the cleaning, split and resizing described in Section 2; nothing else is filtered out. Validation PSNR and SSIM are computed on a fixed subset of the validation split at each checkpoint epoch, so we can watch how training is going; we always evaluate the final checkpoint, and the test split is used only once per run, for that final evaluation. Runs A and B start from the same checkpoint and use the same data order and seeds; the noise schedule, in both training and sampling, is their only difference. Run 0 applies the pretrained checkpoint unchanged with the original schedule. Because test outputs reuse the same sampling seed per batch for every run, all three runs start each image from identical initial noise.
 
 Environment: {{ENVIRONMENT}}
 
@@ -106,7 +108,7 @@ Sampling runs in batches. A reverse sampler calls upstream `p_sample` for $t = T
 
 ## 7. Analysis
 
-[TEAM: compare the results with the three predictions in Section 3. Address at least: (a) whether Run B's lower training loss translates into better or worse samples, and why (train/test mismatch at $x_T$, the narrower noise-level range seen in training); (b) what the trajectories show about when structure appears in Run A vs Run B, using the SNR table; (c) how much fine-tuning alone helps (Run 0 vs Run A); (d) any failure cases in the comparison grid, such as residual noise, colour shifts or over-smoothing.]
+[TEAM: compare the results with the three predictions in Section 3. Address at least: (a) whether Run B's lower training loss translates into better or worse samples, and why (train/test mismatch at $x_T$, the narrower noise-level range seen in training); (b) what the trajectories show about when structure appears in Run A vs Run B, using the SNR table; (c) how much fine-tuning alone helps (Run 0 vs Run A), and whether Run 0 shows face-like priors on tissue, for example mucosa smoothed into skin or lost specular highlights; (d) how Runs A and B differ on mucosal texture, vessels and polyp edges, and any failure cases in the comparison grid, such as residual noise, colour shifts or over-smoothing.]
 
 ## 8. Takeaway
 
@@ -116,7 +118,7 @@ Sampling runs in batches. A reverse sampler calls upstream `p_sample` for $t = T
 
 | Member | Contribution |
 |---|---|
-| Rikin | [TEAM: contribution] |
+| Rikin Patel (M26AI1096) | [TEAM: contribution] |
+| Balasubramanian M (M26AI1030) | [TEAM: contribution] |
 | Sonalika Sharma (M26AI1120) | [TEAM: contribution] |
 | Anshul (M26AI1020) | [TEAM: contribution] |
-| Bala | [TEAM: contribution] |

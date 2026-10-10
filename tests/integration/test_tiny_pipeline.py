@@ -17,13 +17,14 @@ from sr3_ablation.pipelines.evaluate import evaluate_run, record_trajectories
 from sr3_ablation.pipelines.finetune import finetune
 from sr3_ablation.reporting import ReportBuilder
 from sr3_ablation.runs import run_spec
+from tests.helpers import FAKE_DUPLICATE
 
 pytestmark = pytest.mark.integration
 EXPONENT = 1.6
 
 
 @pytest.fixture
-def prepared(tiny_config, fake_afhq):
+def prepared(tiny_config, fake_kvasir):
     prepare_data(tiny_config, workers=2)
     upstream_style = Sr3Backend.create(tiny_config.model, tiny_config.schedule, torch.device("cpu"))
     upstream_style.set_schedule(tiny_config.schedule, 1.0)
@@ -36,11 +37,10 @@ def prepared(tiny_config, fake_afhq):
 def test_full_pipeline(prepared, tmp_path):
     config = prepared
     output = config.paths.output_root
-    assert read_json(output / "dataset" / "split_summary.json")["totals"] == {
-        "train": 9,
-        "val": 3,
-        "test": 3,
-    }
+    summary = read_json(output / "dataset" / "split_summary.json")
+    assert summary["counts"] == {"train": 9, "val": 3, "test": 3}
+    assert summary["images_found"] == 16
+    assert summary["duplicates_removed"] == [FAKE_DUPLICATE]
 
     for key in ("A", "B"):
         results = finetune(config, run_spec(key, EXPONENT))

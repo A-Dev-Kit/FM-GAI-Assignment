@@ -1,15 +1,16 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Builders shared by the tests: a tiny CPU configuration and a synthetic AFHQ tree."""
+"""Builders shared by the tests: a tiny CPU configuration and a synthetic Kvasir-SEG tree."""
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-from sr3_ablation.data.afhq_source import AFHQ_CLASSES, EXTRACTED_MARKER
+from sr3_ablation.data.archive import EXTRACTED_MARKER
 
 
 def tiny_raw_config(root: Path) -> dict[str, Any]:
@@ -22,10 +23,10 @@ def tiny_raw_config(root: Path) -> dict[str, Any]:
             "checkpoint_dir": str(root / "checkpoints"),
         },
         "data": {
-            "afhq_url": "file://unused",
+            "source_url": "file://unused",
             "split_seed": 42,
             "val_size": 3,
-            "test_per_class": 1,
+            "test_size": 3,
             "low_resolution": 4,
             "high_resolution": 16,
             "train_limit": 0,
@@ -75,16 +76,24 @@ def tiny_raw_config(root: Path) -> dict[str, Any]:
     }
 
 
-def make_fake_afhq(raw_dir: Path, train_per_class: int = 4, val_per_class: int = 2) -> Path:
-    """Write ``raw_dir/afhq/{train,val}/{cat,dog,wild}/*.jpg`` and the extraction marker."""
+FAKE_DUPLICATE = "zz_copy_of_frame_000.jpg"
+
+
+def make_fake_kvasir(raw_dir: Path, frames: int = 15) -> Path:
+    """Write ``raw_dir/Kvasir-SEG/{images,masks}/*.jpg`` like the real archive, plus the marker.
+
+    ``images/`` holds ``frames`` distinct non-square frames and one byte-identical copy of the
+    first (``FAKE_DUPLICATE``), so cleaning has something to remove. Returns ``images/``.
+    """
     rng = np.random.default_rng(0)
-    root = raw_dir / "afhq"
-    for split, count in (("train", train_per_class), ("val", val_per_class)):
-        for animal in AFHQ_CLASSES:
-            folder = root / split / animal
-            folder.mkdir(parents=True, exist_ok=True)
-            for index in range(count):
-                pixels = rng.integers(0, 256, size=(32, 32, 3), dtype=np.uint8)
-                Image.fromarray(pixels).save(folder / f"{animal}_{split}_{index:03d}.jpg")
+    images = raw_dir / "Kvasir-SEG" / "images"
+    masks = raw_dir / "Kvasir-SEG" / "masks"
+    images.mkdir(parents=True)
+    masks.mkdir(parents=True)
+    for index in range(frames):
+        pixels = rng.integers(0, 256, size=(32, 40, 3), dtype=np.uint8)
+        Image.fromarray(pixels).save(images / f"frame_{index:03d}.jpg")
+        Image.new("L", (40, 32), 255).save(masks / f"frame_{index:03d}.jpg")
+    shutil.copyfile(images / "frame_000.jpg", images / FAKE_DUPLICATE)
     (raw_dir / EXTRACTED_MARKER).write_text("test", encoding="utf-8")
-    return root
+    return images

@@ -37,8 +37,8 @@ from sr3_ablation.utils.selection import evenly_spaced_indices
 
 FINE_TUNED_RUNS = {"runA": "Run A", "runB": "Run B"}
 COMPARISON_IMAGES = 3
-TITLE = "Noise Schedule Ablation in SR3: theta_t vs theta_t^x on AFHQ"
-RUNNING_TITLE = "CSL7860 Group Assignment - Noise Schedule Ablation (SR3, AFHQ)"
+TITLE = "Noise Schedule Ablation in SR3: theta_t vs theta_t^x on Kvasir-SEG"
+RUNNING_TITLE = "CSL7860 Group Assignment - Noise Schedule Ablation (SR3, Kvasir-SEG)"
 _PLACEHOLDER = re.compile(r"\{\{([A-Z_]+)\}\}")
 
 logger = get_logger("reporting")
@@ -135,18 +135,28 @@ class ReportBuilder:
         path = root / "split_summary.json"
         if not path.is_file():
             return pending("python -m sr3_ablation prepare-data")
-        counts = read_json(path)["counts"]
-        animals = sorted({animal for per_split in counts.values() for animal in per_split})
-        rows = [
-            [split, *[per_class.get(animal, 0) for animal in animals], sum(per_class.values())]
-            for split, per_class in counts.items()
-        ]
-        return markdown_table(["Split", *animals, "Total"], rows)
+        summary = read_json(path)
+        counts = summary["counts"]
+        rows = [[split, count] for split, count in counts.items()]
+        rows.append(["Total", sum(counts.values())])
+        table = markdown_table(["Split", "Images"], rows)
+        found = summary["images_found"]
+        removed = len(summary["duplicates_removed"])
+        if removed == 0:
+            note = f"None of the {found:,} images was an exact duplicate, so all were kept."
+        else:
+            note = f"{removed} of the {found:,} images were exact duplicates and were removed."
+        return f"{table}\n\n{note}"
 
     def _setup_table(self) -> str:
         cfg = self._config
         rows = [
             ["Starting checkpoint", f"`{cfg.model.pretrained_file}` (FFHQ, 16→128)"],
+            [
+                "Dataset",
+                f"Kvasir-SEG, seeded split: {cfg.data.val_size} validation, "
+                f"{cfg.data.test_size} test, rest training",
+            ],
             [
                 "Resolution",
                 f"{cfg.data.low_resolution}×{cfg.data.low_resolution} → "

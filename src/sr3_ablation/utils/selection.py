@@ -7,8 +7,9 @@ from __future__ import annotations
 def evenly_spaced_indices(total: int, count: int) -> list[int]:
     """``count`` indices spread evenly over ``range(total)``, centred in equal-width bins.
 
-    Image ids are ordered by class (cat, dog, wild), so this picks every class for small
-    subsets instead of only the first one. Returns every index if ``count`` is 0 or too large.
+    Spreading the picks over the whole sorted id list keeps small subsets (validation,
+    snapshots, trajectories) from all coming out of one corner of the split. Returns every
+    index if ``count`` is 0 or too large.
     """
     if count <= 0 or count >= total:
         return list(range(total))

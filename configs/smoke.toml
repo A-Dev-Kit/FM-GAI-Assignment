@@ -2,7 +2,7 @@
 #   python -m sr3_ablation smoke-test --config configs/base.toml --config configs/smoke.toml
 
 [experiment]
-name = "sr3_afhq_smoke_test"
+name = "sr3_kvasir_smoke_test"
 
 [paths]
 output_root = "outputs/smoke"

@@ -3,7 +3,7 @@
 # top of scripts/finetune.py, as the assignment brief requires.
 
 [experiment]
-name = "sr3_afhq_noise_schedule_ablation"
+name = "sr3_kvasir_noise_schedule_ablation"
 device = "auto"                     # "auto", "cuda", "cuda:0" or "cpu"
 
 [paths]                             # relative paths are resolved against the repo root
@@ -12,10 +12,10 @@ output_root = "outputs"
 checkpoint_dir = "checkpoints"
 
 [data]
-afhq_url = "https://www.dropbox.com/s/t9l9o3vsx2jai3z/afhq.zip?dl=1"
-split_seed = 42
-val_size = 500                      # carved out of AFHQ train/, stratified by class
-test_per_class = 100                # drawn from AFHQ val/ (the official test split)
+source_url = "https://datasets.simula.no/downloads/kvasir-seg.zip"   # Kvasir-SEG, 44 MB
+split_seed = 42                     # seeded shuffle of the 1,000 frames after removing duplicates
+val_size = 100
+test_size = 100                     # the remaining 800 frames are the training split
 low_resolution = 16
 high_resolution = 128
 train_limit = 0                     # 0 = use every training image
@@ -48,8 +48,8 @@ seed = 42
 batch_size = 8
 grad_accum_steps = 1
 learning_rate = 1e-5
-epochs = 10
-checkpoint_epochs = [2, 4, 6, 8, 10]
+epochs = 60                         # 800 images / batch 8 = 100 iterations per epoch
+checkpoint_epochs = [12, 24, 36, 48, 60]
 max_iterations = 0                  # 0 = no cap; the smoke test caps this
 log_every = 100
 
@@ -63,4 +63,4 @@ trajectory_timesteps = [1600, 1200, 800, 400, 0]
 
 [evaluation]
 metrics = ["psnr", "ssim"]          # add "lpips" after: pip install -e .[lpips]
-test_limit = 0                      # 0 = all 300 test images
+test_limit = 0                      # 0 = all 100 test images

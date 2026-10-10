@@ -21,10 +21,10 @@ class PathsConfig:
 
 @dataclass(frozen=True)
 class DataConfig:
-    afhq_url: str
+    source_url: str
     split_seed: int
     val_size: int
-    test_per_class: int
+    test_size: int
     low_resolution: int
     high_resolution: int
     train_limit: int
@@ -33,8 +33,8 @@ class DataConfig:
     def __post_init__(self) -> None:
         if self.low_resolution >= self.high_resolution:
             raise ConfigError("data.low_resolution must be smaller than data.high_resolution.")
-        if self.val_size < 0 or self.test_per_class <= 0 or self.train_limit < 0:
-            raise ConfigError("data split sizes must be non-negative (test_per_class > 0).")
+        if self.val_size <= 0 or self.test_size <= 0 or self.train_limit < 0:
+            raise ConfigError("data.val_size and data.test_size must be positive.")
 
 
 @dataclass(frozen=True)

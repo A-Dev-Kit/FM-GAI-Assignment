@@ -83,9 +83,12 @@ def _smoke_test(config: ExperimentConfig, args: argparse.Namespace) -> object:
 
 
 COMMANDS: dict[str, tuple[str, Handler]] = {
-    "download-data": ("Download and extract AFHQ v1.", _download_data),
+    "download-data": ("Download and extract Kvasir-SEG.", _download_data),
     "download-checkpoint": ("Download the pretrained SR3 16->128 generator.", _download_checkpoint),
-    "prepare-data": ("Split AFHQ (seeded) and write the SR3 16/128 layout.", _prepare_data),
+    "prepare-data": (
+        "Deduplicate and split Kvasir-SEG (seeded), then write the SR3 16/128 layout.",
+        _prepare_data,
+    ),
     "verify-schedule": ("Check the model's schedule buffers for a run.", _verify_schedule),
     "run0": ("Evaluate the pretrained model on the test split (Run 0).", _run0),
     "finetune": ("Fine-tune for Run A or B (same as scripts/finetune.py).", _finetune),
@@ -100,7 +103,7 @@ RUN_CHOICES = {"verify-schedule": "AB", "finetune": "AB", "evaluate": "0AB", "tr
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m sr3_ablation",
-        description="SR3 noise-schedule ablation (theta_t -> theta_t ** x) on AFHQ.",
+        description="SR3 noise-schedule ablation (theta_t -> theta_t ** x) on Kvasir-SEG.",
     )
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument(

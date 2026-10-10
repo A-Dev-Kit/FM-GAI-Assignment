@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from sr3_ablation.config import ExperimentConfig, build_config
-from tests.helpers import make_fake_afhq, tiny_raw_config
+from sr3_ablation.data import KvasirSegSource
+from tests.helpers import make_fake_kvasir, tiny_raw_config
 
 
 @pytest.fixture
@@ -17,5 +18,6 @@ def tiny_config(tmp_path: Path) -> ExperimentConfig:
 
 
 @pytest.fixture
-def fake_afhq(tiny_config: ExperimentConfig) -> Path:
-    return make_fake_afhq(tiny_config.paths.data_root / "raw")
+def fake_kvasir(tiny_config: ExperimentConfig) -> Path:
+    source = KvasirSegSource(tiny_config.data.source_url, tiny_config.paths.data_root)
+    return make_fake_kvasir(source.raw_dir)

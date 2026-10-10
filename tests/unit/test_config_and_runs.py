@@ -13,7 +13,9 @@ def test_base_config_matches_plan():
     config = load_config(local_config=None)
     assert config.train.batch_size == 8
     assert config.train.learning_rate == 1e-5
-    assert config.train.checkpoint_epochs == (2, 4, 6, 8, 10)
+    assert config.train.epochs == 60
+    assert config.train.checkpoint_epochs == (12, 24, 36, 48, 60)
+    assert (config.data.val_size, config.data.test_size) == (100, 100)
     assert config.sampling.trajectory_timesteps == (1600, 1200, 800, 400, 0)
     assert config.model.unet.channel_multiplier == (1, 2, 4, 8, 8)
     assert config.paths.data_root == (PROJECT_ROOT / "data").resolve()

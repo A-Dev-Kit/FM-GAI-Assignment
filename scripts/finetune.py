@@ -1,5 +1,5 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Fine-tune the pretrained SR3 16->128 model on AFHQ for Run A or Run B.
+"""Fine-tune the pretrained SR3 16->128 model on Kvasir-SEG for Run A or Run B.
 
     python scripts/finetune.py --run A        # theta_t (original schedule)
     python scripts/finetune.py --run B        # theta_t ** NOISE_EXPONENT_X

@@ -1,6 +1,6 @@
 # ADDED: template for machine-specific overrides.
 # Copy to configs/local.toml (git-ignored); it is merged automatically after all other
-# config files. Typical use: keep the ~3 GB of data and checkpoints outside a cloud-synced
+# config files. Typical use: keep the data and the 391 MB checkpoint outside a cloud-synced
 # folder such as OneDrive.
 
 [paths]
@@ -12,3 +12,4 @@ checkpoint_dir = "C:/Users/<you>/sr3_ablation_cache/checkpoints"
 
 # [data]
 # num_workers = 2          # lower this on Windows laptops if data loading is slow to start
+# source_url = "file:///C:/Users/<you>/Downloads/kvasir-seg.zip"   # reuse a zip you already have
