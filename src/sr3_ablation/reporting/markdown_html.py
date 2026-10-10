@@ -23,6 +23,8 @@ h2 { font-size: 12.6pt; color: #16365c; margin: 1.1em 0 0.4em; padding: 3px 0 3p
   border-left: 3.5px solid #16365c; background: #eef2f8; break-after: avoid; }
 h3 { font-size: 11pt; color: #26303d; margin: 0.8em 0 0.25em; break-after: avoid; }
 p { margin: 0.35em 0; }
+a { color: #1d4f91; text-decoration: none; border-bottom: 1px dotted #1d4f91;
+  overflow-wrap: anywhere; }
 table { border-collapse: collapse; margin: 0.5em 0 0.8em; width: 100%; font-size: 9.2pt;
   break-inside: avoid; }
 th, td { border: 1px solid #b9c0ca; padding: 3.5px 7px; text-align: left; vertical-align: top; }
