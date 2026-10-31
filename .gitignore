@@ -28,3 +28,14 @@ configs/local.toml
 .ipynb_checkpoints/
 Thumbs.db
 .DS_Store
+
+# Local-only dev tooling — keep on disk, never commit or push
+/src/sr3_ablation/reporting/
+/src/sr3_ablation/submission/
+/tests/
+/notebooks/
+/configs/smoke.toml
+/src/sr3_ablation/pipelines/smoke.py
+/report/report_template.md
+/report/build_report.py
+/local-only/

@@ -9,10 +9,8 @@ from collections.abc import Callable, Sequence  # ADDED
 from pathlib import Path  # ADDED
 
 from sr3_ablation.config import ExperimentConfig, load_config  # ADDED
-from sr3_ablation.paths import CONFIG_DIR, DEFAULT_CONFIG  # ADDED
+from sr3_ablation.paths import DEFAULT_CONFIG  # ADDED
 from sr3_ablation.runs import RunSpec, declared_exponent, run_spec  # ADDED
-
-SMOKE_CONFIGS = [DEFAULT_CONFIG, CONFIG_DIR / "smoke.toml"]  # ADDED
 
 Handler = Callable[[ExperimentConfig, argparse.Namespace], object]  # ADDED
 
@@ -76,32 +74,6 @@ def _diagnose_start(config: ExperimentConfig, args: argparse.Namespace) -> objec
     return diagnose_start(config, _run(args))  # ADDED
 
 
-def _report(config: ExperimentConfig, args: argparse.Namespace) -> object:  # ADDED
-    from sr3_ablation.reporting.report import ReportBuilder  # ADDED
-
-    return ReportBuilder(config, declared_exponent()).build(pdf=not args.no_pdf)  # ADDED
-
-
-def _package(config: ExperimentConfig, args: argparse.Namespace) -> object:  # ADDED
-    from sr3_ablation.submission import default_packager  # ADDED
-
-    result = default_packager(config).build(args.output, allow_incomplete=args.allow_incomplete)  # ADDED
-    return result.to_dict()  # ADDED
-
-
-def _smoke_test(config: ExperimentConfig, args: argparse.Namespace) -> object:  # ADDED
-    from sr3_ablation.pipelines.smoke import smoke_test  # ADDED
-
-    return smoke_test(config, declared_exponent())  # ADDED
-
-
-def _supervise(config: ExperimentConfig, args: argparse.Namespace) -> object:  # ADDED
-    from sr3_ablation.pipelines.supervise import supervise  # ADDED
-
-    config_files = args.config or [DEFAULT_CONFIG]  # ADDED
-    return supervise(config_files[0])  # ADDED
-
-
 COMMANDS: dict[str, tuple[str, Handler]] = {  # ADDED
     "download-data": ("Download and extract Kvasir-SEG.", _download_data),  # ADDED
     "download-checkpoint": ("Download the pretrained SR3 16->128 generator.", _download_checkpoint),  # ADDED
@@ -118,19 +90,12 @@ COMMANDS: dict[str, tuple[str, Handler]] = {  # ADDED
         "Analysis only: sample the trajectory images from pure noise and from q(x_T | x_0).",  # ADDED
         _diagnose_start,  # ADDED
     ),  # ADDED
-    "report": ("Build report/build/report.{md,html,pdf}.", _report),  # ADDED
-    "package": ("Write the submission zip (dist/Group_3_Phase2.zip).", _package),  # ADDED
-    "smoke-test": ("Short end-to-end run with timing estimates.", _smoke_test),  # ADDED
-    "supervise": (  # ADDED
-        "Run the full pipeline with stage markers, retries and resume (detached-friendly).",  # ADDED
-        _supervise,  # ADDED
-    ),  # ADDED
 }  # ADDED
 RUN_CHOICES = {  # ADDED
-    "verify-schedule": "0ABS",  # ADDED
-    "finetune": "ABS",  # ADDED
-    "evaluate": "0ABS",  # ADDED
-    "trajectories": "0ABS",  # ADDED
+    "verify-schedule": "0AB",  # ADDED
+    "finetune": "AB",  # ADDED
+    "evaluate": "0AB",  # ADDED
+    "trajectories": "0AB",  # ADDED
     "diagnose-start": "B",  # ADDED
 }  # ADDED
 
@@ -146,8 +111,8 @@ def build_parser() -> argparse.ArgumentParser:  # ADDED
         "--config",  # ADDED
         action="append",  # ADDED
         type=Path,  # ADDED
-        help="TOML file(s), merged in order (default: configs/base.toml; smoke-test default: "  # ADDED
-        "base.toml + smoke.toml). configs/local.toml is merged last if present.",  # ADDED
+        help="TOML file(s), merged in order (default: configs/base.toml). "  # ADDED
+        "configs/local.toml is merged last if present.",  # ADDED
     )  # ADDED
     commands = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")  # ADDED
     for name, (help_text, _) in COMMANDS.items():  # ADDED
@@ -156,24 +121,13 @@ def build_parser() -> argparse.ArgumentParser:  # ADDED
             sub.add_argument("--run", required=True, choices=list(RUN_CHOICES[name]))  # ADDED
         if name == "prepare-data":  # ADDED
             sub.add_argument("--workers", type=int, default=8, help="image-resizing threads")  # ADDED
-        if name == "report":  # ADDED
-            sub.add_argument("--no-pdf", action="store_true", help="only write .md and .html")  # ADDED
-        if name == "package":  # ADDED
-            from sr3_ablation.submission import DEFAULT_ZIP  # ADDED
-
-            sub.add_argument("--output", type=Path, default=DEFAULT_ZIP, help="zip to write")  # ADDED
-            sub.add_argument(  # ADDED
-                "--allow-incomplete",  # ADDED
-                action="store_true",  # ADDED
-                help="write the zip even if brief items are missing",  # ADDED
-            )  # ADDED
     return parser  # ADDED
 
 
 def main(argv: Sequence[str] | None = None) -> int:  # ADDED
     """Run one command and print its result as JSON; returns the exit code."""  # ADDED
     args = build_parser().parse_args(argv)  # ADDED
-    config_files = args.config or (SMOKE_CONFIGS if args.command == "smoke-test" else None)  # ADDED
+    config_files = args.config  # ADDED
     config = load_config(config_files)  # ADDED
     _, handler = COMMANDS[args.command]  # ADDED
     result = handler(config, args)  # ADDED
