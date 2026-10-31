@@ -68,37 +68,38 @@ def _marker_dir(config: ExperimentConfig) -> Path:  # ADDED
 
 
 def _stages(config_path: Path, python: str) -> list[Stage]:  # ADDED
-    base = [python, "-m", "sr3_ablation", "--config", str(config_path)]  # ADDED
     config = load_config([config_path.resolve()])  # ADDED
     markers = _marker_dir(config)  # ADDED
+    cfg = str(config_path.resolve())  # ADDED
+
     return [  # ADDED
-        Stage("prepare-data", [*base, "prepare-data"], markers / "prepare-data.done"),  # ADDED
-        Stage("run0", [*base, "run0"], markers / "run0.done"),  # ADDED
-        Stage("runA_finetune", [*base, "finetune", "--run", "A"], markers / "runA_finetune.done"),  # ADDED
-        Stage("runA_eval", [*base, "evaluate", "--run", "A"], markers / "runA_eval.done"),  # ADDED
+        Stage("prepare-data", [python, "-m", "sr3_ablation", "prepare-data", "--config", cfg], markers / "prepare-data.done"),  # ADDED
+        Stage("run0", [python, "-m", "sr3_ablation", "run0", "--config", cfg], markers / "run0.done"),  # ADDED
+        Stage("runA_finetune", [python, "-m", "sr3_ablation", "finetune", "--run", "A", "--config", cfg], markers / "runA_finetune.done"),  # ADDED
+        Stage("runA_eval", [python, "-m", "sr3_ablation", "evaluate", "--run", "A", "--config", cfg], markers / "runA_eval.done"),  # ADDED
         Stage(  # ADDED
             "runA_trajectories",  # ADDED
-            [*base, "trajectories", "--run", "A"],  # ADDED
+            [python, "-m", "sr3_ablation", "trajectories", "--run", "A", "--config", cfg],  # ADDED
             markers / "runA_traj.done",  # ADDED
         ),  # ADDED
-        Stage("runB_finetune", [*base, "finetune", "--run", "B"], markers / "runB_finetune.done"),  # ADDED
-        Stage("runB_eval", [*base, "evaluate", "--run", "B"], markers / "runB_eval.done"),  # ADDED
+        Stage("runB_finetune", [python, "-m", "sr3_ablation", "finetune", "--run", "B", "--config", cfg], markers / "runB_finetune.done"),  # ADDED
+        Stage("runB_eval", [python, "-m", "sr3_ablation", "evaluate", "--run", "B", "--config", cfg], markers / "runB_eval.done"),  # ADDED
         Stage(  # ADDED
             "runB_trajectories",  # ADDED
-            [*base, "trajectories", "--run", "B"],  # ADDED
+            [python, "-m", "sr3_ablation", "trajectories", "--run", "B", "--config", cfg],  # ADDED
             markers / "runB_trajectories.done",  # ADDED
         ),  # ADDED
         Stage(  # ADDED
             "runB_diagnostic",  # ADDED
-            [*base, "diagnose-start", "--run", "B"],  # ADDED
+            [python, "-m", "sr3_ablation", "diagnose-start", "--run", "B", "--config", cfg],  # ADDED
             markers / "runB_diagnostic.done",  # ADDED
         ),  # ADDED
-        Stage("report", [*base, "report"], markers / "report.done"),  # ADDED
-        Stage("package", [*base, "package"], markers / "package.done"),  # ADDED
-        Stage("runS_finetune", [*base, "finetune", "--run", "S"], markers / "runS_finetune.done"),  # ADDED
-        Stage("runS_eval", [*base, "evaluate", "--run", "S"], markers / "runS_eval.done"),  # ADDED
-        Stage("final_report", [*base, "report"], markers / "final_report.done"),  # ADDED
-        Stage("final_package", [*base, "package"], markers / "final_package.done"),  # ADDED
+        Stage("report", [python, "-m", "sr3_ablation", "report", "--config", cfg], markers / "report.done"),  # ADDED
+        Stage("package", [python, "-m", "sr3_ablation", "package", "--config", cfg], markers / "package.done"),  # ADDED
+        Stage("runS_finetune", [python, "-m", "sr3_ablation", "finetune", "--run", "S", "--config", cfg], markers / "runS_finetune.done"),  # ADDED
+        Stage("runS_eval", [python, "-m", "sr3_ablation", "evaluate", "--run", "S", "--config", cfg], markers / "runS_eval.done"),  # ADDED
+        Stage("final_report", [python, "-m", "sr3_ablation", "report", "--config", cfg], markers / "final_report.done"),  # ADDED
+        Stage("final_package", [python, "-m", "sr3_ablation", "package", "--config", cfg], markers / "final_package.done"),  # ADDED
     ]  # ADDED
 
 
