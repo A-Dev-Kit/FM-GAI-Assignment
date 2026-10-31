@@ -47,7 +47,7 @@ dropout = 0.2
 seed = 42
 batch_size = 8
 grad_accum_steps = 1
-learning_rate = 1e-5
+learning_rate = 3e-5
 epochs = 60                         # 800 images / batch 8 = 100 iterations per epoch
 checkpoint_epochs = [12, 24, 36, 48, 60]
 max_iterations = 0                  # 0 = no cap; the smoke test caps this
@@ -57,10 +57,10 @@ log_every = 100
 seed = 1234
 batch_size = 8
 snapshot_samples = 3                # fixed validation images saved at each checkpoint epoch
-validation_images = 24              # images used for the validation PSNR at checkpoints
+validation_images = 12              # images used for the validation PSNR at checkpoints
 trajectory_samples = 3
-trajectory_timesteps = [1600, 1200, 800, 400, 0]
+trajectory_timesteps = [2000, 1500, 1000, 500, 0]
 
 [evaluation]
-metrics = ["psnr", "ssim"]          # add "lpips" after: pip install -e .[lpips]
+metrics = ["psnr", "ssim", "lpips"]  # add "lpips" after: pip install -e .[lpips]
 test_limit = 0                      # 0 = all 100 test images

@@ -24,11 +24,11 @@ We use Kvasir-SEG (Jha et al., *Kvasir-SEG: A Segmented Polyp Dataset*, MMM 2020
 - Dataset page: [https://datasets.simula.no/kvasir-seg/](https://datasets.simula.no/kvasir-seg/)
 - The zip our code downloads: [https://datasets.simula.no/downloads/kvasir-seg.zip](https://datasets.simula.no/downloads/kvasir-seg.zip)
 
-Before splitting we hash every file and drop exact copies, since the same frame turning up in both training and test would quietly flatter our scores. Kvasir-SEG has no official split and no classes, so we shuffle what is left with seed 42 and take 100 frames for test, 100 for validation and the rest for training:
+Before splitting we hash every file and drop exact copies, since the same frame turning up in both training and test would quietly flatter our scores. Kvasir-SEG has no official split and no classes, so we shuffle what is left with seed 42 and take the first 800 frames for training, the next 100 for validation and the last 100 for test (the same order as our teammates' repos):
 
 {{DATASET_TABLE}}
 
-We resize each frame with bicubic interpolation and a centre crop, to 128×128 for the target and 16×16 for the input, and then stretch the input back to 128×128. That is the same recipe as upstream `data/prepare_data.py`. Many frames have a small black box in the bottom-left corner that belongs to the endoscope's display rather than the tissue, and we left it alone: cropping it would mean guessing its size frame by frame, and all three runs see exactly the same processed images anyway. Our code writes the full manifest to `outputs/dataset/manifest.csv`.
+For each frame we centre-crop a square, resize that crop to 128×128 as the ground truth, downsample it to 16×16 for the low-resolution input, and bicubically upsample the 16×16 image back to 128×128 for conditioning — matching the Phase 1 declaration rather than resizing the full frame directly to 16×16.
 
 To show that Kvasir-SEG was not part of the pretraining we take route (a), the stated pretraining data, and three separate sources agree on it.
 
@@ -91,7 +91,7 @@ Environment: {{ENVIRONMENT}}
 
 All of our code sits in one public repository: [https://github.com/A-Dev-Kit/FM-GAI-Assignment](https://github.com/A-Dev-Kit/FM-GAI-Assignment)
 
-We vendored the upstream code in `third_party/sr3/`. The **only** change we made to it is a single line in `model/sr3_modules/diffusion.py`, inside `set_new_noise_schedule`, marked `# ADDED`. The table puts the upstream lines and ours side by side, with line numbers from both files:
+We vendored the upstream code in `third_party/sr3/`. The **only** changes are marked `# ADDED` lines in `model/sr3_modules/diffusion.py`, inside `set_new_noise_schedule`: Run B applies `betas ** exponent`, and supplementary Run S (analysis only) can raise `alphas_cumprod` to the power `alpha_bar_exponent` and re-derive `betas`. The table puts the upstream lines and ours side by side, with line numbers from both files:
 
 {{CODE_DIFF}}
 
@@ -141,7 +141,7 @@ The same samples, with Run A and Run B on adjacent rows, so the epoch where the 
 
 ### 6.4 Inference trajectories
 
-Using the final model of each run, we saved the noisy sample $x_t$ at five equally spaced timesteps of the reverse process for three test images. $x_{1600}$ is the first saved state after the start at $x_{2000}$, and $x_0$ is the output. Files are named `<run>_t<tttt>_sample<k>.png`.
+Using the final model of each run, we saved the noisy sample $x_t$ at five equally spaced timesteps $t \in \{2000, 1500, 1000, 500, 0\}$ of the reverse process for three test images. $x_{2000}$ is pure noise at the start, and $x_0$ is the output. Files are named `<run>_t<tttt>_sample<k>.png`.
 
 {{TRAJECTORY_FIGURE}}
 
@@ -155,51 +155,18 @@ We rank the runs by PSNR, with SSIM alongside: every input has a pixel-aligned 1
 
 ## 7. Analysis
 
-### 7.1 Which run won
-
-Run A is the better run by a wide margin, and the gap is already there at the first checkpoint. At epoch 12 Run B's validation samples are saturated colour noise, and they are still that at epoch 60: its validation PSNR is 7.20 dB at epoch 12 and 7.18 dB at epoch 60. Run A's samples look like endoscopy frames at every checkpoint, and its validation PSNR climbs from 22.60 dB to 24.00 dB. On the test set Run A reaches 23.80 dB, 1.26 dB above bicubic upsampling, against 7.33 dB for Run B. All three of the checks we set up at the end of Section 3 came out the way the schedule analysis said they would.
-
-### 7.2 Fine-tuning loss
-
-Run B's mean training loss over the 60 epochs is 0.487, roughly ten times Run A's 0.047, and it hardly moves: 0.494 over the first ten epochs, 0.488 over the last ten. For comparison, always predicting $\hat\epsilon = 0$ would give an L1 loss of $\mathbb{E}|\epsilon| = \sqrt{2/\pi} \approx 0.80$, so Run B's UNet does recover part of the noise, just not much of it. The reason is the one Section 3 gives. Under $\theta_t^{x}$ the noise is never more than {{XT_NOISE_COEF}} of $x_t$, so the UNet is hunting for a faint noise field inside fine mucosal texture, and its noise-level input barely changes from one timestep to the next. Run A's loss is flat too, for the opposite reason: the FFHQ checkpoint already predicts noise well under its own schedule, so fine-tuning only has to adapt it to the new image statistics.
-
-### 7.3 Why Run B's samples collapse
-
-Two things go wrong at once, and they compound. Run B was only ever trained on $x_T = {{XT_SIGNAL_COEF}}\,x_0 + {{XT_NOISE_COEF}}\,\epsilon$, an SNR of {{MODIFIED_SNR_T}}, but sampling starts from $\mathcal{N}(0, I)$, whose SNR is 0, so the chain opens in a state the model has never seen. It then has no way to recover. Every step estimates $\hat x_0 = (x_t - \sqrt{1-\bar\alpha'_t}\,\hat\epsilon)/\sqrt{\bar\alpha'_t}$ with $\sqrt{1-\bar\alpha'_t} \le {{XT_NOISE_COEF}}$ and $\sqrt{\bar\alpha'_t} \ge {{XT_SIGNAL_COEF}}$, so $\hat x_0 \approx x_t$ whatever the network predicts, and the posterior variance of a single step is at most $\theta'_T = $ {{MODIFIED_BETA_T}}.
-
-The chain therefore carries its starting noise all the way down to $x_0$ almost untouched, and clipping to $[-1, 1]$ for display turns that noise into the saturated colours in the grids. A PSNR of 7.3 dB, with a standard deviation of only 0.37 dB over 100 test images, is about what clipped Gaussian noise scores against almost any image. That is far below bicubic, which is what we expected.
-
-### 7.4 Separating the bad start from the weak denoiser
-
-A bad starting point and a denoiser that cannot denoise would both produce noise, so we ran one more experiment to tell them apart. We sampled Run B's final model a second time on the three trajectory images, with the same seed, but started it from the distribution it was actually trained on at $t = T$: $x_T = {{XT_SIGNAL_COEF}}\,\tilde x_0 + {{XT_NOISE_COEF}}\,\epsilon$, with the bicubic image $\tilde x_0$ standing in for the unknown $x_0$. That start uses the conditioning image twice, so it is not a fair competitor to the other runs and we keep it out of the results table. It is here only to show where Run B's chain goes wrong.
+{{QUALITATIVE_ANALYSIS}}
 
 {{START_DIAGNOSTIC}}
 
-Started this way the same model returns an image scoring 22.34 dB, which is essentially the 22.29 dB of the bicubic image it began from, and it looks like that image too: a slightly denoised bicubic upsampling with no new fine detail. So Run B's UNet does remove the small amount of noise it was trained on. What its chain cannot do is return anything much different from what it was handed. From pure noise that is noise; from a near-clean start it is the blurry conditioning image. Fixing the start alone would not turn Run B into a super-resolution model, because its schedule leaves no noisy steps in which detail could be generated.
-
-### 7.5 Inference trajectories
-
-Run A's states are noise at $x_{1600}$ and $x_{1200}$ (SNR 0.0016 and 0.028). The coarse layout, the overlay box and the bright regions appear at $x_{800}$ (SNR 0.25), the frame is clearly recognisable at $x_{400}$ (SNR 2.0), and $x_0$ is clean. That is the transition around the SNR crossing at $t = {{ORIGINAL_SNR_CROSSING}}$ that the table in Section 3 points to. Run B's five states all look alike, saturated noise from $x_{1600}$ right through to $x_0$. Under its own schedule $x_{1600}$ should already have an SNR of 381, so its reverse chain never visits the states its schedule describes.
-
-### 7.6 What fine-tuning fixed in Run 0
-
-The FFHQ checkpoint used as it comes scores 21.74 dB, 0.80 dB *below* bicubic, and its outputs show why: they are sharp, but they look like faces. Mucosa comes out as smooth, softly shaded skin with streaks and wrinkle-like creases. The many small specular highlights of wet tissue are mostly missing or replaced by a few large, smooth ones. Colours drift towards brown and grey, and in some frames folds turn into dark, hair-like strands (test_00083 in the comparison grid). Fine-tuning with the original schedule fixes most of this. Run A gains 2.06 dB over Run 0, restores the small highlights, keeps polyp outlines crisp, and even redraws the white marks of the endoscope's on-screen overlay. Its SSIM (0.627) only matches bicubic (0.629), though: the fine texture Run A generates is plausible but not pixel-aligned with the ground truth, and SSIM penalises any such invented detail.
-
-### 7.7 Texture, vessels, polyp edges and where Run A still fails
-
-For Run B there is nothing to compare, because no texture, vessel or edge survives in any of its test outputs. Run A's failures are milder and of the kind generative super-resolution from a 16×16 input usually has. The granular surface of polyps comes out smoother than in the ground truth. Thin dark vessels are drawn where the low-resolution input suggests them rather than where they really are, and small red spots on polyps go missing. Specular highlights are plausible but not in their true positions.
+{{SUPPLEMENTARY_ANALYSIS}}
 
 ## 8. Takeaway
 
-SR3 is extremely sensitive to its noise schedule. Raising $\theta_t$ to the power {{EXPONENT}} keeps every step a valid variance, yet it shrinks the end-of-schedule noise until $\bar\alpha_T \approx$ {{MODIFIED_ALPHA_BAR_T}}, and that alone turns a model that beats bicubic by 1.26 dB into one that outputs pure noise. The deciding quantity is not $\theta_t$ itself but the terminal SNR it produces. A power transform is only advisable if $T$ or $\beta_T$ is raised as well, so that $\bar\alpha_T$ is still close to 0 and sampling from $\mathcal{N}(0, I)$ still matches the end of the forward process. With $T = 2000$ and $\beta_T = 10^{-2}$ fixed, any $x > 1$ pushes $\bar\alpha_T$ up, and by $x = {{EXPONENT}}$ it is almost 1.
+{{TAKEAWAY}}
 
 ## 9. Contribution Statement
 
 Each of us signs below to confirm that the table describes who was responsible for which part of the work, and that we all read and agreed to the final report.
 
-| Member | Roll number | Responsible for | Signature | Date |
-|---|---|---|---|---|
-| Rikin Patel | M26AI1096 | [TEAM: contribution] | | |
-| Balasubramanian M | M26AI1030 | [TEAM: contribution] | | |
-| Sonalika Sharma | M26AI1120 | [TEAM: contribution] | | |
-| Anshul | M26AI1020 | [TEAM: contribution] | | |
+{{CONTRIBUTION_TABLE}}

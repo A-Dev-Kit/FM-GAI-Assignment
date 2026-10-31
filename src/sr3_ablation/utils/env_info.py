@@ -1,59 +1,59 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Record the software and hardware environment of a run (for the README and report)."""
+"""Record the software and hardware environment of a run (for the README and report)."""  # ADDED
 
-from __future__ import annotations
+from __future__ import annotations  # ADDED
 
-import platform
-import subprocess
-import sys
-from importlib import metadata
-from typing import Any
+import platform  # ADDED
+import subprocess  # ADDED
+import sys  # ADDED
+from importlib import metadata  # ADDED
+from typing import Any  # ADDED
 
-import torch
+import torch  # ADDED
 
-from sr3_ablation.paths import PROJECT_ROOT
+from sr3_ablation.paths import PROJECT_ROOT  # ADDED
 
-TRACKED_PACKAGES = ("torch", "torchvision", "numpy", "pillow", "matplotlib", "gdown", "lpips")
-
-
-def collect_environment(device: torch.device) -> dict[str, Any]:
-    """Python, platform, package versions, CUDA, device and git commit."""
-    info: dict[str, Any] = {
-        "python": sys.version.split()[0],
-        "platform": platform.platform(),
-        "packages": {name: _version(name) for name in TRACKED_PACKAGES},
-        "cuda_available": torch.cuda.is_available(),
-        "torch_cuda": torch.version.cuda,
-        "device": str(device),
-        "git_commit": _git_commit(),
-    }
-    if device.type == "cuda":
-        properties = torch.cuda.get_device_properties(device)
-        info["gpu"] = {
-            "name": properties.name,
-            "total_memory_mib": round(properties.total_memory / 2**20),
-            "capability": f"{properties.major}.{properties.minor}",
-        }
-    return info
+TRACKED_PACKAGES = ("torch", "torchvision", "numpy", "pillow", "matplotlib", "gdown", "lpips")  # ADDED
 
 
-def _version(package: str) -> str | None:
-    try:
-        return metadata.version(package)
-    except metadata.PackageNotFoundError:
-        return None
+def collect_environment(device: torch.device) -> dict[str, Any]:  # ADDED
+    """Python, platform, package versions, CUDA, device and git commit."""  # ADDED
+    info: dict[str, Any] = {  # ADDED
+        "python": sys.version.split()[0],  # ADDED
+        "platform": platform.platform(),  # ADDED
+        "packages": {name: _version(name) for name in TRACKED_PACKAGES},  # ADDED
+        "cuda_available": torch.cuda.is_available(),  # ADDED
+        "torch_cuda": torch.version.cuda,  # ADDED
+        "device": str(device),  # ADDED
+        "git_commit": _git_commit(),  # ADDED
+    }  # ADDED
+    if device.type == "cuda":  # ADDED
+        properties = torch.cuda.get_device_properties(device)  # ADDED
+        info["gpu"] = {  # ADDED
+            "name": properties.name,  # ADDED
+            "total_memory_mib": round(properties.total_memory / 2**20),  # ADDED
+            "capability": f"{properties.major}.{properties.minor}",  # ADDED
+        }  # ADDED
+    return info  # ADDED
 
 
-def _git_commit() -> str | None:
-    try:
-        completed = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    return completed.stdout.strip() or None
+def _version(package: str) -> str | None:  # ADDED
+    try:  # ADDED
+        return metadata.version(package)  # ADDED
+    except metadata.PackageNotFoundError:  # ADDED
+        return None  # ADDED
+
+
+def _git_commit() -> str | None:  # ADDED
+    try:  # ADDED
+        completed = subprocess.run(  # ADDED
+            ["git", "rev-parse", "HEAD"],  # ADDED
+            cwd=PROJECT_ROOT,  # ADDED
+            capture_output=True,  # ADDED
+            text=True,  # ADDED
+            check=True,  # ADDED
+            timeout=10,  # ADDED
+        )  # ADDED
+    except (OSError, subprocess.SubprocessError):  # ADDED
+        return None  # ADDED
+    return completed.stdout.strip() or None  # ADDED

@@ -99,9 +99,17 @@ class GaussianDiffusion(nn.Module):
             linear_end=schedule_opt['linear_end'])
         betas = betas.detach().cpu().numpy() if isinstance(
             betas, torch.Tensor) else betas
-        betas = betas ** schedule_opt.get('exponent', 1.0)  # ADDED: noise-schedule ablation, theta_t -> theta_t ** x
+        alpha_bar_exponent = float(schedule_opt.get('alpha_bar_exponent', 1.0))  # ADDED
+        beta_exponent = float(schedule_opt.get('exponent', 1.0))  # ADDED
+        if alpha_bar_exponent == 1.0:  # ADDED
+            betas = betas ** beta_exponent  # ADDED: Run B, theta_t = beta_t ** x
         alphas = 1. - betas
         alphas_cumprod = np.cumprod(alphas, axis=0)
+        if alpha_bar_exponent != 1.0:  # ADDED: supplementary run, theta_t = alpha_bar_t ** x
+            alphas_cumprod = np.power(alphas_cumprod, alpha_bar_exponent)  # ADDED
+            betas = 1. - alphas_cumprod / np.append(1., alphas_cumprod[:-1])  # ADDED
+            alphas = 1. - betas  # ADDED
+            alphas_cumprod = np.cumprod(alphas, axis=0)  # ADDED
         alphas_cumprod_prev = np.append(1., alphas_cumprod[:-1])
         self.sqrt_alphas_cumprod_prev = np.sqrt(
             np.append(1., alphas_cumprod))

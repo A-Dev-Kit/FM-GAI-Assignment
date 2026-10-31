@@ -1,32 +1,32 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Image-quality metrics and test-set evaluation of Run 0, Run A and Run B."""
+"""Image-quality metrics and test-set evaluation of Run 0, Run A and Run B."""  # ADDED
 
-from sr3_ablation.evaluation.evaluator import (
-    EvaluationSummary,
-    SuperResolutionEvaluator,
-    evaluate_bicubic,
-    score_images,
-    summarise,
-)
-from sr3_ablation.evaluation.metrics import (
-    METRIC_REGISTRY,
-    ImageMetric,
-    Lpips,
-    Psnr,
-    Ssim,
-    build_metrics,
-)
+from sr3_ablation.evaluation.evaluator import (  # ADDED
+    EvaluationSummary,  # ADDED
+    SuperResolutionEvaluator,  # ADDED
+    evaluate_bicubic,  # ADDED
+    score_images,  # ADDED
+    summarise,  # ADDED
+)  # ADDED
+from sr3_ablation.evaluation.metrics import (  # ADDED
+    METRIC_REGISTRY,  # ADDED
+    ImageMetric,  # ADDED
+    Lpips,  # ADDED
+    Psnr,  # ADDED
+    Ssim,  # ADDED
+    build_metrics,  # ADDED
+)  # ADDED
 
-__all__ = [
-    "METRIC_REGISTRY",
-    "EvaluationSummary",
-    "ImageMetric",
-    "Lpips",
-    "Psnr",
-    "Ssim",
-    "SuperResolutionEvaluator",
-    "build_metrics",
-    "evaluate_bicubic",
-    "score_images",
-    "summarise",
-]
+__all__ = [  # ADDED
+    "METRIC_REGISTRY",  # ADDED
+    "EvaluationSummary",  # ADDED
+    "ImageMetric",  # ADDED
+    "Lpips",  # ADDED
+    "Psnr",  # ADDED
+    "Ssim",  # ADDED
+    "SuperResolutionEvaluator",  # ADDED
+    "build_metrics",  # ADDED
+    "evaluate_bicubic",  # ADDED
+    "score_images",  # ADDED
+    "summarise",  # ADDED
+]  # ADDED

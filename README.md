@@ -120,12 +120,20 @@ missing ones; `--allow-incomplete` writes the zip anyway.
 `python -m sr3_ablation smoke-test` runs everything briefly (`configs/smoke.toml`: 200 training
 iterations, 8 test images) and writes timing estimates to `outputs/smoke/timings.json`.
 
+`python -m sr3_ablation supervise` runs the **full** pipeline unattended: `prepare-data`, Run 0,
+Runs A/B (finetune, evaluate, trajectories), diagnose-start, report, package, then supplementary
+**Run S** (finetune + evaluate). Completed stages are skipped via `outputs/supervisor/*.done`
+(config hash). Resume uses `training_last.pth` and per-batch evaluation skips. Status:
+`outputs/supervisor/status.json`.
+
+Supplementary Run S (`finetune --run S`, `evaluate --run S`) applies **$\\bar\\alpha_t^{x}$** with
+the same hyperparameters as Run B; it is for analysis only and is **not** in the submission zip.
+
 ### Reproducibility
 
-- **Data split** (seed 42, `outputs/dataset/manifest.csv`): all 1,000 Kvasir-SEG frames are
-  hashed first and exact duplicates dropped (there are none), then shuffled with the seed into
-  800 train, 100 validation and 100 test images. `split_summary.json` records the counts and any
-  removed files.
+- **Data split** (seed 42, `outputs/dataset/manifest.csv`): after deduplication, shuffle with
+  seed 42, then **train = indices 0–799, val = 800–899, test = 900–999** (same as teammates).
+- **Preprocessing:** centre-crop square → 128 HR → 16 LR → bicubic 128 conditioning.
 - **Seeds:** training 42, sampling 1234. Test batch *k* uses seed 1234 + *k*, so Runs 0, A and B
   start from identical noise for each test image. Validation, snapshot and trajectory images are
   fixed and spread evenly over the sorted image ids.
@@ -133,7 +141,7 @@ iterations, 8 test images) and writes timing estimates to `outputs/smoke/timings
   corner. It is kept as is; every run sees the same processed images.
 - **Recorded per run:** `resolved_config.json`, `environment.json` (versions, GPU, git commit),
   `run.json` (run identity, exponent and per-epoch results) and `log.txt`.
-- Runs A and B share every hyperparameter: Adam with learning rate 1e-5, batch 8, 60 epochs
+- Runs A and B share every hyperparameter: Adam with learning rate **3e-5**, batch 8, 60 epochs
   (100 iterations each), L1 noise loss and horizontal-flip augmentation.
 
 ### What each run produces (`outputs/<run>/`)
@@ -142,7 +150,7 @@ iterations, 8 test images) and writes timing estimates to `outputs/smoke/timings
 |---|---|---|
 | `loss.csv` | columns `epoch,train_loss` | per-epoch training loss |
 | `samples/runB_epoch24_sample1.png` … | 3 fixed validation images at epochs 12, 24, 36, 48, 60 | samples at 5 equally spaced epochs |
-| `trajectories/runA_t1600_sample1.png` … | $x_t$ at $t$ = 1600, 1200, 800, 400, 0 for 3 test images | reverse-process trajectory |
+| `trajectories/runA_t1600_sample1.png` … | $x_t$ at $t$ = **2000, 1500, 1000, 500, 0** for 3 test images | reverse-process trajectory |
 | `trajectories/trajectory.json` | image ids, $\bar\alpha_t$ and SNR for each saved $t$ | trajectory labels |
 | `validation.csv` | validation PSNR / SSIM at checkpoint epochs | model selection evidence |
 | `test_outputs/`, `test_metrics.csv`, `test_metrics.json` | super-resolved test images and scores | results table |

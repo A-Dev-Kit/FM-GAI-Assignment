@@ -1,38 +1,40 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Section of Dataset and Verification: split sizes and duplicate removal."""
+"""Section of Dataset and Verification: split sizes and duplicate removal."""  # ADDED
 
-from __future__ import annotations
+from __future__ import annotations  # ADDED
 
-from sr3_ablation.data.preprocess import processed_root
-from sr3_ablation.io.jsonio import read_json
-from sr3_ablation.reporting.sections.base import PREPARE_DATA_COMMAND, ReportContext, pending
-from sr3_ablation.reporting.tables import markdown_table
+from sr3_ablation.data.preprocess import processed_root  # ADDED
+from sr3_ablation.io.jsonio import read_json  # ADDED
+from sr3_ablation.reporting.sections.base import PREPARE_DATA_COMMAND, ReportContext, pending  # ADDED
+from sr3_ablation.reporting.tables import markdown_table  # ADDED
 
-SPLIT_SUMMARY_FILE = "split_summary.json"
+SPLIT_SUMMARY_FILE = "split_summary.json"  # ADDED
 
 
-class DatasetTableSection:
-    """Images per split, plus a sentence on exact duplicates."""
+class DatasetTableSection:  # ADDED
+    """Images per split, plus a sentence on exact duplicates."""  # ADDED
 
-    placeholder = "DATASET_TABLE"
+    placeholder = "DATASET_TABLE"  # ADDED
 
-    def render(self, context: ReportContext) -> str:
-        data = context.config.data
-        root = processed_root(
-            context.config.paths.data_root, data.low_resolution, data.high_resolution
-        )
-        path = root / SPLIT_SUMMARY_FILE
-        if not path.is_file():
-            return pending(PREPARE_DATA_COMMAND)
-        summary = read_json(path)
-        counts = summary["counts"]
-        rows = [[split, count] for split, count in counts.items()]
-        rows.append(["Total", sum(counts.values())])
-        table = markdown_table(["Split", "Images"], rows)
-        found = summary["images_found"]
-        removed = len(summary["duplicates_removed"])
-        if removed == 0:
-            note = f"None of the {found:,} images was an exact duplicate, so all were kept."
-        else:
-            note = f"{removed} of the {found:,} images were exact duplicates and were removed."
-        return f"{table}\n\n{note}"
+    def render(self, context: ReportContext) -> str:  # ADDED
+        data = context.config.data  # ADDED
+        root = processed_root(  # ADDED
+            context.config.paths.data_root,  # ADDED
+            data.low_resolution,  # ADDED
+            data.high_resolution,  # ADDED
+        )  # ADDED
+        path = root / SPLIT_SUMMARY_FILE  # ADDED
+        if not path.is_file():  # ADDED
+            return pending(PREPARE_DATA_COMMAND)  # ADDED
+        summary = read_json(path)  # ADDED
+        counts = summary["counts"]  # ADDED
+        rows = [[split, count] for split, count in counts.items()]  # ADDED
+        rows.append(["Total", sum(counts.values())])  # ADDED
+        table = markdown_table(["Split", "Images"], rows)  # ADDED
+        found = summary["images_found"]  # ADDED
+        removed = len(summary["duplicates_removed"])  # ADDED
+        if removed == 0:  # ADDED
+            note = f"None of the {found:,} images was an exact duplicate, so all were kept."  # ADDED
+        else:  # ADDED
+            note = f"{removed} of the {found:,} images were exact duplicates and were removed."  # ADDED
+        return f"{table}\n\n{note}"  # ADDED

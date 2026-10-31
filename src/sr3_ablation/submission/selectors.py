@@ -1,122 +1,122 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Selectors for the code, each run's artifacts, the dataset manifest and the report."""
+"""Selectors for the code, each run's artifacts, the dataset manifest and the report."""  # ADDED
 
-from __future__ import annotations
+from __future__ import annotations  # ADDED
 
-import subprocess
-from collections.abc import Callable, Iterable, Iterator, Sequence
-from pathlib import Path
+import subprocess  # ADDED
+from collections.abc import Callable, Iterable, Iterator, Sequence  # ADDED
+from pathlib import Path  # ADDED
 
-from sr3_ablation.io.run_paths import RunPaths
-from sr3_ablation.submission.artifacts import Artifact
+from sr3_ablation.io.run_paths import RunPaths  # ADDED
+from sr3_ablation.submission.artifacts import Artifact  # ADDED
 
-OUTPUTS_FOLDER = "outputs"
-IMAGE_PATTERN = "*.png"
-STATE_PATTERNS = ("*.png", "*.json")
-DATASET_FILES = ("manifest.csv", "split_summary.json")
-REPORT_FILES = ("report.pdf", "report.html", "report.md")
-ASSETS_FOLDER = "report_assets"
+OUTPUTS_FOLDER = "outputs"  # ADDED
+IMAGE_PATTERN = "*.png"  # ADDED
+STATE_PATTERNS = ("*.png", "*.json")  # ADDED
+DATASET_FILES = ("manifest.csv", "split_summary.json")  # ADDED
+REPORT_FILES = ("report.pdf", "report.html", "report.md")  # ADDED
+ASSETS_FOLDER = "report_assets"  # ADDED
 
-FileLister = Callable[[Path], Sequence[str]]
-
-
-def git_tracked_files(root: Path) -> list[str]:
-    """POSIX paths of the files committed under ``root`` (so local and generated files stay out)."""
-    try:
-        completed = subprocess.run(
-            ["git", "ls-files", "-z"],
-            cwd=root,
-            capture_output=True,
-            check=True,
-            timeout=60,
-        )
-    except subprocess.CalledProcessError as error:
-        raise RuntimeError(
-            f"{root} is not a git checkout; the submission zip is built from committed files."
-        ) from error
-    return [name for name in completed.stdout.decode("utf-8").split("\0") if name]
+FileLister = Callable[[Path], Sequence[str]]  # ADDED
 
 
-class CodeSelector:
-    """Every committed file of the repository: code, configs, tests, README, report sources."""
-
-    def __init__(self, project_root: Path, lister: FileLister = git_tracked_files) -> None:
-        self._root = project_root
-        self._lister = lister
-
-    def select(self) -> Iterator[Artifact]:
-        for name in self._lister(self._root):
-            source = self._root / name
-            if source.is_file():
-                yield Artifact(source, name)
-
-
-class RunArtifactSelector:
-    """One run's logs, records, checkpoint-epoch samples, trajectories and diagnostics.
-
-    Weights and the super-resolved test images stay out; ``test_metrics.csv`` scores them.
-    """
-
-    RECORD_FILES = (
-        "loss.csv",
-        "validation.csv",
-        "test_metrics.csv",
-        "test_metrics.json",
-        "schedule.json",
-        "schedule_sampling.json",
-        "run.json",
-        "environment.json",
-        "resolved_config.json",
-        "log.txt",
-    )
-
-    def __init__(self, output_root: Path, run_name: str) -> None:
-        self._output_root = output_root
-        self._paths = RunPaths.for_run(output_root, run_name)
-
-    def select(self) -> Iterator[Artifact]:
-        records = (self._paths.root / name for name in self.RECORD_FILES)
-        samples = sorted(self._paths.samples.glob(IMAGE_PATTERN))
-        states = sorted(
-            path
-            for folder in (self._paths.trajectories, self._paths.diagnostics)
-            for pattern in STATE_PATTERNS
-            for path in folder.glob(pattern)
-        )
-        yield from _under_outputs(self._output_root, [*records, *samples, *states])
+def git_tracked_files(root: Path) -> list[str]:  # ADDED
+    """POSIX paths of the files committed under ``root`` (so local and generated files stay out)."""  # ADDED
+    try:  # ADDED
+        completed = subprocess.run(  # ADDED
+            ["git", "ls-files", "-z"],  # ADDED
+            cwd=root,  # ADDED
+            capture_output=True,  # ADDED
+            check=True,  # ADDED
+            timeout=60,  # ADDED
+        )  # ADDED
+    except subprocess.CalledProcessError as error:  # ADDED
+        raise RuntimeError(  # ADDED
+            f"{root} is not a git checkout; the submission zip is built from committed files."  # ADDED
+        ) from error  # ADDED
+    return [name for name in completed.stdout.decode("utf-8").split("\0") if name]  # ADDED
 
 
-class DatasetManifestSelector:
-    """File lists of the seeded split; image names only, never the images themselves."""
+class CodeSelector:  # ADDED
+    """Every committed file of the repository: code, configs, tests, README, report sources."""  # ADDED
 
-    def __init__(self, output_root: Path) -> None:
-        self._output_root = output_root
+    def __init__(self, project_root: Path, lister: FileLister = git_tracked_files) -> None:  # ADDED
+        self._root = project_root  # ADDED
+        self._lister = lister  # ADDED
 
-    def select(self) -> Iterator[Artifact]:
-        folder = self._output_root / "dataset"
-        yield from _under_outputs(self._output_root, [folder / name for name in DATASET_FILES])
-
-
-class ReportSelector:
-    """The built report and the figures and tables it links to."""
-
-    def __init__(self, project_root: Path, build_dir: Path, output_root: Path) -> None:
-        self._project_root = project_root
-        self._build_dir = build_dir
-        self._output_root = output_root
-
-    def select(self) -> Iterator[Artifact]:
-        for name in REPORT_FILES:
-            source = self._build_dir / name
-            if source.is_file():
-                yield Artifact(source, source.relative_to(self._project_root).as_posix())
-        assets = sorted(p for p in (self._output_root / ASSETS_FOLDER).glob("*") if p.is_file())
-        yield from _under_outputs(self._output_root, assets)
+    def select(self) -> Iterator[Artifact]:  # ADDED
+        for name in self._lister(self._root):  # ADDED
+            source = self._root / name  # ADDED
+            if source.is_file():  # ADDED
+                yield Artifact(source, name)  # ADDED
 
 
-def _under_outputs(output_root: Path, sources: Iterable[Path]) -> Iterator[Artifact]:
-    """Existing files, archived as ``outputs/<path relative to output_root>``."""
-    for source in sources:
-        if source.is_file():
-            relative = source.relative_to(output_root).as_posix()
-            yield Artifact(source, f"{OUTPUTS_FOLDER}/{relative}")
+class RunArtifactSelector:  # ADDED
+    """One run's logs, records, checkpoint-epoch samples, trajectories and diagnostics.  # ADDED
+
+    Weights and the super-resolved test images stay out; ``test_metrics.csv`` scores them.  # ADDED
+    """  # ADDED
+
+    RECORD_FILES = (  # ADDED
+        "loss.csv",  # ADDED
+        "validation.csv",  # ADDED
+        "test_metrics.csv",  # ADDED
+        "test_metrics.json",  # ADDED
+        "schedule.json",  # ADDED
+        "schedule_sampling.json",  # ADDED
+        "run.json",  # ADDED
+        "environment.json",  # ADDED
+        "resolved_config.json",  # ADDED
+        "log.txt",  # ADDED
+    )  # ADDED
+
+    def __init__(self, output_root: Path, run_name: str) -> None:  # ADDED
+        self._output_root = output_root  # ADDED
+        self._paths = RunPaths.for_run(output_root, run_name)  # ADDED
+
+    def select(self) -> Iterator[Artifact]:  # ADDED
+        records = (self._paths.root / name for name in self.RECORD_FILES)  # ADDED
+        samples = sorted(self._paths.samples.glob(IMAGE_PATTERN))  # ADDED
+        states = sorted(  # ADDED
+            path  # ADDED
+            for folder in (self._paths.trajectories, self._paths.diagnostics)  # ADDED
+            for pattern in STATE_PATTERNS  # ADDED
+            for path in folder.glob(pattern)  # ADDED
+        )  # ADDED
+        yield from _under_outputs(self._output_root, [*records, *samples, *states])  # ADDED
+
+
+class DatasetManifestSelector:  # ADDED
+    """File lists of the seeded split; image names only, never the images themselves."""  # ADDED
+
+    def __init__(self, output_root: Path) -> None:  # ADDED
+        self._output_root = output_root  # ADDED
+
+    def select(self) -> Iterator[Artifact]:  # ADDED
+        folder = self._output_root / "dataset"  # ADDED
+        yield from _under_outputs(self._output_root, [folder / name for name in DATASET_FILES])  # ADDED
+
+
+class ReportSelector:  # ADDED
+    """The built report and the figures and tables it links to."""  # ADDED
+
+    def __init__(self, project_root: Path, build_dir: Path, output_root: Path) -> None:  # ADDED
+        self._project_root = project_root  # ADDED
+        self._build_dir = build_dir  # ADDED
+        self._output_root = output_root  # ADDED
+
+    def select(self) -> Iterator[Artifact]:  # ADDED
+        for name in REPORT_FILES:  # ADDED
+            source = self._build_dir / name  # ADDED
+            if source.is_file():  # ADDED
+                yield Artifact(source, source.relative_to(self._project_root).as_posix())  # ADDED
+        assets = sorted(p for p in (self._output_root / ASSETS_FOLDER).glob("*") if p.is_file())  # ADDED
+        yield from _under_outputs(self._output_root, assets)  # ADDED
+
+
+def _under_outputs(output_root: Path, sources: Iterable[Path]) -> Iterator[Artifact]:  # ADDED
+    """Existing files, archived as ``outputs/<path relative to output_root>``."""  # ADDED
+    for source in sources:  # ADDED
+        if source.is_file():  # ADDED
+            relative = source.relative_to(output_root).as_posix()  # ADDED
+            yield Artifact(source, f"{OUTPUTS_FOLDER}/{relative}")  # ADDED

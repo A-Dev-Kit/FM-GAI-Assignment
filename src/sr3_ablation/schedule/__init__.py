@@ -1,34 +1,36 @@
 # ADDED: new file, not part of the upstream SR3 codebase.
-"""Noise schedules: transform strategies, derived quantities and model verification."""
+"""Noise schedules: transform strategies, derived quantities and model verification."""  # ADDED
 
-from sr3_ablation.schedule.noise_schedule import NoiseSchedule, ScheduleSummary, base_betas
-from sr3_ablation.schedule.transforms import (
-    EXPONENT_LOWER,
-    EXPONENT_UPPER,
-    IdentityTransform,
-    PowerTransform,
-    ScheduleTransform,
-    assert_open_unit_interval,
-    transform_for,
-)
-from sr3_ablation.schedule.verification import (
-    ScheduleBuffers,
-    ScheduleMismatchError,
-    verify_schedule,
-)
+from sr3_ablation.schedule.noise_schedule import NoiseSchedule, ScheduleSummary, base_betas  # ADDED
+from sr3_ablation.schedule.transforms import (  # ADDED
+    EXPONENT_LOWER,  # ADDED
+    EXPONENT_UPPER,  # ADDED
+    AlphaBarPowerTransform,  # ADDED
+    IdentityTransform,  # ADDED
+    PowerTransform,  # ADDED
+    ScheduleTransform,  # ADDED
+    assert_open_unit_interval,  # ADDED
+    transform_for,  # ADDED
+)  # ADDED
+from sr3_ablation.schedule.verification import (  # ADDED
+    ScheduleBuffers,  # ADDED
+    ScheduleMismatchError,  # ADDED
+    verify_schedule,  # ADDED
+)  # ADDED
 
-__all__ = [
-    "EXPONENT_LOWER",
-    "EXPONENT_UPPER",
-    "IdentityTransform",
-    "NoiseSchedule",
-    "PowerTransform",
-    "ScheduleBuffers",
-    "ScheduleMismatchError",
-    "ScheduleSummary",
-    "ScheduleTransform",
-    "assert_open_unit_interval",
-    "base_betas",
-    "transform_for",
-    "verify_schedule",
-]
+__all__ = [  # ADDED
+    "EXPONENT_LOWER",  # ADDED
+    "EXPONENT_UPPER",  # ADDED
+    "AlphaBarPowerTransform",  # ADDED
+    "IdentityTransform",  # ADDED
+    "NoiseSchedule",  # ADDED
+    "PowerTransform",  # ADDED
+    "ScheduleBuffers",  # ADDED
+    "ScheduleMismatchError",  # ADDED
+    "ScheduleSummary",  # ADDED
+    "ScheduleTransform",  # ADDED
+    "assert_open_unit_interval",  # ADDED
+    "base_betas",  # ADDED
+    "transform_for",  # ADDED
+    "verify_schedule",  # ADDED
+]  # ADDED
