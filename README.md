@@ -58,16 +58,10 @@ python -m sr3_ablation trajectories --run B
 python -m sr3_ablation diagnose-start --run B
 ```
 
-**Split:** seed 42 → train 800, val 100, test 100 (same order as teammates).  
+**Split:** seed 42 → train 800, val 100, test 100.  
 **Preprocessing:** centre-crop → 128 HR → 16 LR → bicubic 128 conditioning.  
 **Training:** Adam, lr `3e-5`, batch 8, 60 epochs, checkpoints at 12/24/36/48/60.  
 **Metrics:** PSNR, SSIM, LPIPS on the test split.
-
-## Submission
-
-Upload **`report/build/report.pdf`** plus the experiment **code** and **`outputs/`** artefacts for Runs 0, A and B as required by the Phase 2 brief (loss logs, checkpoint samples, trajectories, test metrics, schedule evidence). Assemble the folder or zip the way your instructor specifies.
-
-The PDF and any zip are prepared **on your machine only**; report-builder and packager scripts live under paths listed in `.gitignore` and are **not** pushed to GitHub.
 
 ## Licences
 

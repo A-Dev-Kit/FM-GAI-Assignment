@@ -1,6 +1,5 @@
 # ADDED: default configuration for the full Run 0 / Run A / Run B experiment.
-# The exponent x is NOT configured here; it is declared once as NOISE_EXPONENT_X at the
-# top of scripts/finetune.py, as the assignment brief requires.
+# The exponent x is NOT configured here; it is declared once as NOISE_EXPONENT_X.
 
 [experiment]
 name = "sr3_kvasir_noise_schedule_ablation"

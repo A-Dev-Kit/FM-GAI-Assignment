@@ -4,8 +4,7 @@
     python scripts/finetune.py --run A        # theta_t (original schedule)
     python scripts/finetune.py --run B        # theta_t ** NOISE_EXPONENT_X
 
-Optional: --config FILE (repeatable; default configs/base.toml). Outputs go to
-outputs/runA or outputs/runB. NOISE_EXPONENT_X below is the single source of truth for x;
+Outputs go to outputs/runA or outputs/runB. NOISE_EXPONENT_X below is the single source of truth for x;
 every other command reads it from this file.
 """
 
